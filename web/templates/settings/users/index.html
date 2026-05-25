@@ -13,52 +13,83 @@
     </a>
   </div>
 
-  <div class="card bg-base-100 shadow-sm">
-    <div class="card-body p-0">
-      {{if .Rows}}
-      <div class="overflow-x-auto">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Joined</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range .Rows}}
-            <tr>
-              <td class="font-medium">
-                {{.Name}}
-                {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1">you</span>{{end}}
-              </td>
-              <td>{{.Email}}</td>
-              <td>
-                {{if eq .Role "admin"}}
-                  <span class="badge badge-primary badge-sm">admin</span>
-                {{else}}
-                  <span class="badge badge-ghost badge-sm">user</span>
-                {{end}}
-              </td>
-              <td class="text-xs opacity-70">{{.CreatedAt}}</td>
-              <td class="text-right">
-                <a href="/settings/users/{{.ID}}/edit" class="btn btn-ghost btn-xs">
-                  <i data-lucide="pencil" class="w-4 h-4"></i>
-                  Edit
-                </a>
-              </td>
-            </tr>
+  {{if .Rows}}
+  <div class="hidden overflow-x-auto rounded-lg bg-base-100 shadow-sm md:block">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Joined</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td class="font-medium">
+            {{.Name}}
+            {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1">you</span>{{end}}
+          </td>
+          <td>{{.Email}}</td>
+          <td>
+            {{if eq .Role "admin"}}
+              <span class="badge badge-primary badge-sm">admin</span>
+            {{else}}
+              <span class="badge badge-ghost badge-sm">user</span>
             {{end}}
-          </tbody>
-        </table>
-      </div>
-      {{else}}
-      <div class="p-6 text-center opacity-60">No users yet.</div>
-      {{end}}
-    </div>
+          </td>
+          <td class="text-xs opacity-70">{{.CreatedAt}}</td>
+          <td class="text-right">
+            <a href="/settings/users/{{.ID}}/edit" class="btn btn-ghost btn-xs">
+              <i data-lucide="pencil" class="w-4 h-4"></i>
+              Edit
+            </a>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
   </div>
+
+  <div class="space-y-3 md:hidden">
+    {{range .Rows}}
+    <div class="rounded-lg border border-base-300/60 bg-base-100 p-4 shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="break-words text-base font-semibold leading-snug">
+            {{.Name}}
+            {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1 align-middle">you</span>{{end}}
+          </h2>
+          <p class="mt-1 break-words text-sm opacity-70">{{.Email}}</p>
+        </div>
+        <div class="shrink-0">
+          {{if eq .Role "admin"}}
+            <span class="badge badge-primary badge-sm">admin</span>
+          {{else}}
+            <span class="badge badge-ghost badge-sm">user</span>
+          {{end}}
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-2 text-xs opacity-70">
+        <i data-lucide="calendar-plus" class="h-4 w-4 shrink-0"></i>
+        <span class="min-w-0 break-words">{{.CreatedAt}}</span>
+      </div>
+
+      <div class="mt-4 flex justify-end">
+        <a href="/settings/users/{{.ID}}/edit" class="btn btn-ghost btn-xs">
+          <i data-lucide="pencil" class="w-4 h-4"></i>
+          Edit
+        </a>
+      </div>
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="rounded-lg bg-base-100 p-6 text-center text-base-content/60 shadow-sm">No users yet.</div>
+  {{end}}
 
   {{if gt .TotalPages 1}}
   <div class="flex items-center justify-between text-sm">

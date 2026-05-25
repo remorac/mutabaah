@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -177,7 +178,14 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 		}
 		view.Missed[idx].Rows = append(view.Missed[idx].Rows, rowFromOccurrence(occ, csrfToken))
 	}
+	sortMissedGroupsByDateDesc(view.Missed)
 	return view, nil
+}
+
+func sortMissedGroupsByDateDesc(groups []missedGroupView) {
+	sort.SliceStable(groups, func(i, j int) bool {
+		return groups[i].Date > groups[j].Date
+	})
 }
 
 func saturdayWeekStart(day time.Time) time.Time {

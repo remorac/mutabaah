@@ -12,126 +12,56 @@
     </a>
   </div>
 
-  <div class="card bg-base-100 shadow-sm">
-    <div class="card-body p-0">
-      {{if .Rows}}
-      <div class="hidden md:block overflow-x-auto">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Title</th>
-              <th>Frequency</th>
-              <th>Description</th>
-              <th>Window</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range .Rows}}
-            <tr>
-              <td class="opacity-60 text-xs">{{.Sequence}}</td>
-              <td class="font-medium max-w-64">
-                <span class="block truncate" title="{{.Title}}">{{.Title}}</span>
-              </td>
-              <td><span class="badge badge-outline badge-sm">{{.Frequency}}</span></td>
-              <td class="text-sm max-w-48">
-                {{if .Description}}
-                  <span class="block truncate" title="{{.Description}}">{{.Description}}</span>
-                {{else}}
-                  <span class="opacity-40">—</span>
-                {{end}}
-              </td>
-              <td class="text-xs opacity-70">
-                {{.StartDate}}{{if .EndDate}} → {{.EndDate}}{{else}} →{{end}}
-              </td>
-              <td>
-                {{if .Active}}
-                  <span class="badge badge-success badge-sm">active</span>
-                {{else}}
-                  <span class="badge badge-ghost badge-sm">inactive</span>
-                {{end}}
-              </td>
-              <td class="text-right whitespace-nowrap">
-                <div class="inline-flex items-center gap-1">
-                  <form method="POST" action="/settings/tasks/{{.ID}}/move-up" class="inline">
-                    <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
-                    <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move up" {{if .IsFirst}}disabled{{end}}>
-                      <i data-lucide="arrow-up" class="w-4 h-4"></i>
-                    </button>
-                  </form>
-                  <form method="POST" action="/settings/tasks/{{.ID}}/move-down" class="inline">
-                    <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
-                    <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move down" {{if .IsLast}}disabled{{end}}>
-                      <i data-lucide="arrow-down" class="w-4 h-4"></i>
-                    </button>
-                  </form>
-                  <form method="POST" action="/settings/tasks/{{.ID}}/active" class="inline">
-                    <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
-                    {{if .Active}}
-                    <input type="hidden" name="active" value="false" />
-                    <button type="submit" class="btn btn-ghost btn-xs" aria-label="Deactivate task" title="Deactivate">
-                      <i data-lucide="pause" class="w-4 h-4"></i>
-                    </button>
-                    {{else}}
-                    <input type="hidden" name="active" value="true" />
-                    <button type="submit" class="btn btn-ghost btn-xs" aria-label="Activate task" title="Activate">
-                      <i data-lucide="play" class="w-4 h-4"></i>
-                    </button>
-                    {{end}}
-                  </form>
-                  <a href="/settings/tasks/{{.ID}}/edit" class="btn btn-ghost btn-xs">
-                    <i data-lucide="pencil" class="w-4 h-4"></i>
-                    Edit
-                  </a>
-                </div>
-              </td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="md:hidden divide-y divide-[color-mix(in_oklab,var(--color-base-300)_80%,transparent)]">
+  {{if .Rows}}
+  <div class="hidden overflow-x-auto rounded-lg bg-base-100 shadow-sm md:block">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          <th>Frequency</th>
+          <th>Description</th>
+          <th>Window</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
         {{range .Rows}}
-        <div class="p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold opacity-50">#{{.Sequence}}</span>
-                <span class="badge badge-outline badge-sm">{{.Frequency}}</span>
-              </div>
-              <h2 class="mt-2 break-words text-base font-semibold leading-snug">{{.Title}}</h2>
-              <p class="mt-1 break-words text-sm opacity-70">
-                {{if .Description}}{{.Description}}{{else}}<span class="opacity-50">No description</span>{{end}}
-              </p>
-            </div>
-            <div class="shrink-0">
-              {{if .Active}}
-                <span class="badge badge-success badge-sm">active</span>
-              {{else}}
-                <span class="badge badge-ghost badge-sm">inactive</span>
-              {{end}}
-            </div>
-          </div>
-
-          <div class="mt-3 flex items-center gap-2 text-xs opacity-70">
-            <i data-lucide="calendar-range" class="h-4 w-4 shrink-0"></i>
-            <span class="min-w-0 break-words">{{.StartDate}}{{if .EndDate}} to {{.EndDate}}{{else}} onward{{end}}</span>
-          </div>
-
-          <div class="mt-4 flex items-center justify-between gap-2">
-            <div class="flex items-center gap-1">
+        <tr>
+          <td class="opacity-60 text-xs">{{.Sequence}}</td>
+          <td class="font-medium max-w-64">
+            <span class="block truncate" title="{{.Title}}">{{.Title}}</span>
+          </td>
+          <td><span class="badge badge-outline badge-sm">{{.Frequency}}</span></td>
+          <td class="text-sm max-w-48">
+            {{if .Description}}
+              <span class="block truncate" title="{{.Description}}">{{.Description}}</span>
+            {{else}}
+              <span class="opacity-40">—</span>
+            {{end}}
+          </td>
+          <td class="text-xs opacity-70">
+            {{.StartDate}}{{if .EndDate}} → {{.EndDate}}{{else}} →{{end}}
+          </td>
+          <td>
+            {{if .Active}}
+              <span class="badge badge-success badge-sm">active</span>
+            {{else}}
+              <span class="badge badge-ghost badge-sm">inactive</span>
+            {{end}}
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <div class="inline-flex items-center gap-1">
               <form method="POST" action="/settings/tasks/{{.ID}}/move-up" class="inline">
                 <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
-                <button type="submit" class="btn btn-ghost btn-xs btn-square" aria-label="Move up" {{if .IsFirst}}disabled{{end}}>
+                <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move up" {{if .IsFirst}}disabled{{end}}>
                   <i data-lucide="arrow-up" class="w-4 h-4"></i>
                 </button>
               </form>
               <form method="POST" action="/settings/tasks/{{.ID}}/move-down" class="inline">
                 <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
-                <button type="submit" class="btn btn-ghost btn-xs btn-square" aria-label="Move down" {{if .IsLast}}disabled{{end}}>
+                <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move down" {{if .IsLast}}disabled{{end}}>
                   <i data-lucide="arrow-down" class="w-4 h-4"></i>
                 </button>
               </form>
@@ -139,32 +69,98 @@
                 <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
                 {{if .Active}}
                 <input type="hidden" name="active" value="false" />
-                <button type="submit" class="btn btn-ghost btn-xs btn-square" aria-label="Deactivate task" title="Deactivate">
+                <button type="submit" class="btn btn-ghost btn-xs" aria-label="Deactivate task" title="Deactivate">
                   <i data-lucide="pause" class="w-4 h-4"></i>
                 </button>
                 {{else}}
                 <input type="hidden" name="active" value="true" />
-                <button type="submit" class="btn btn-ghost btn-xs btn-square" aria-label="Activate task" title="Activate">
+                <button type="submit" class="btn btn-ghost btn-xs" aria-label="Activate task" title="Activate">
                   <i data-lucide="play" class="w-4 h-4"></i>
                 </button>
                 {{end}}
               </form>
+              <a href="/settings/tasks/{{.ID}}/edit" class="btn btn-ghost btn-xs">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+                Edit
+              </a>
             </div>
-            <a href="/settings/tasks/{{.ID}}/edit" class="btn btn-ghost btn-xs">
-              <i data-lucide="pencil" class="w-4 h-4"></i>
-              Edit
-            </a>
-          </div>
-        </div>
+          </td>
+        </tr>
         {{end}}
-      </div>
-      {{else}}
-      <div class="p-6 text-center opacity-60">
-        No tasks yet.
-      </div>
-      {{end}}
-    </div>
+      </tbody>
+    </table>
   </div>
+
+  <div class="space-y-3 md:hidden">
+    {{range .Rows}}
+    <div class="rounded-lg border border-base-300/60 bg-base-100 p-4 shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold opacity-50">#{{.Sequence}}</span>
+            <span class="badge badge-outline badge-sm">{{.Frequency}}</span>
+          </div>
+          <h2 class="mt-2 break-words text-base font-semibold leading-snug">{{.Title}}</h2>
+          <p class="mt-1 break-words text-sm opacity-70">
+            {{if .Description}}{{.Description}}{{else}}<span class="opacity-50">No description</span>{{end}}
+          </p>
+        </div>
+        <div class="shrink-0">
+          {{if .Active}}
+            <span class="badge badge-success badge-sm">active</span>
+          {{else}}
+            <span class="badge badge-ghost badge-sm">inactive</span>
+          {{end}}
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-2 text-xs opacity-70">
+        <i data-lucide="calendar-range" class="h-4 w-4 shrink-0"></i>
+        <span class="min-w-0 break-words">{{.StartDate}}{{if .EndDate}} to {{.EndDate}}{{else}} onward{{end}}</span>
+      </div>
+
+      <div class="mt-4 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1">
+          <form method="POST" action="/settings/tasks/{{.ID}}/move-up" class="inline">
+            <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
+            <button type="submit" class="btn btn-ghost btn-xs btn-square" aria-label="Move up" {{if .IsFirst}}disabled{{end}}>
+              <i data-lucide="arrow-up" class="w-4 h-4"></i>
+            </button>
+          </form>
+          <form method="POST" action="/settings/tasks/{{.ID}}/move-down" class="inline">
+            <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
+            <button type="submit" class="btn btn-ghost btn-xs btn-square" aria-label="Move down" {{if .IsLast}}disabled{{end}}>
+              <i data-lucide="arrow-down" class="w-4 h-4"></i>
+            </button>
+          </form>
+          <form method="POST" action="/settings/tasks/{{.ID}}/active" class="inline">
+            <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
+            {{if .Active}}
+            <input type="hidden" name="active" value="false" />
+            <button type="submit" class="btn btn-ghost btn-xs btn-square" aria-label="Deactivate task" title="Deactivate">
+              <i data-lucide="pause" class="w-4 h-4"></i>
+            </button>
+            {{else}}
+            <input type="hidden" name="active" value="true" />
+            <button type="submit" class="btn btn-ghost btn-xs btn-square" aria-label="Activate task" title="Activate">
+              <i data-lucide="play" class="w-4 h-4"></i>
+            </button>
+            {{end}}
+          </form>
+        </div>
+        <a href="/settings/tasks/{{.ID}}/edit" class="btn btn-ghost btn-xs">
+          <i data-lucide="pencil" class="w-4 h-4"></i>
+          Edit
+        </a>
+      </div>
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="rounded-lg bg-base-100 p-6 text-center text-base-content/60 shadow-sm">
+    No tasks yet.
+  </div>
+  {{end}}
 
 </div>
 <script>if (window.lucide) window.lucide.createIcons();</script>

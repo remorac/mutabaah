@@ -104,3 +104,20 @@ func TestSaturdayWeekStart(t *testing.T) {
 		})
 	}
 }
+
+func TestSortMissedGroupsByDateDesc(t *testing.T) {
+	groups := []missedGroupView{
+		{Date: "2026-05-23"},
+		{Date: "2026-05-25"},
+		{Date: "2026-05-24"},
+	}
+
+	sortMissedGroupsByDateDesc(groups)
+
+	want := []string{"2026-05-25", "2026-05-24", "2026-05-23"}
+	for i, group := range groups {
+		if group.Date != want[i] {
+			t.Fatalf("groups[%d].Date = %s, want %s", i, group.Date, want[i])
+		}
+	}
+}
