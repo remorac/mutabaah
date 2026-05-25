@@ -12,8 +12,8 @@ RUN go mod download
 COPY . .
 
 # Static binary so the runtime image can stay distroless-thin.
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/tracker ./cmd/server \
- && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/seed    ./cmd/seed
+RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath -ldflags="-s -w" -o /out/tracker ./cmd/server \
+ && CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath -ldflags="-s -w" -o /out/seed    ./cmd/seed
 
 # --- runtime stage ------------------------------------------------------------
 FROM gcr.io/distroless/static-debian12:nonroot

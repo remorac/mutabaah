@@ -8,7 +8,7 @@ run:
 	go run ./cmd/server
 
 build:
-	go build -o bin/$(APP) ./cmd/server
+	go build -buildvcs=false -o bin/$(APP) ./cmd/server
 
 seed:
 	go run ./cmd/seed
