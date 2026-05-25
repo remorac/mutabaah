@@ -96,13 +96,8 @@ func (h *DashboardHandler) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := dashboardPageView{
-		BaseView: BaseView{
-			Title:     "Mutaba'ah Tracker",
-			UserName:  user.Name,
-			UserRole:  string(user.Role),
-			CSRFToken: token,
-		},
-		Inner: inner,
+		BaseView: NewBaseView(user, token, "Mutaba'ah Tracker"),
+		Inner:    inner,
 	}
 	if err := h.tmpl.Render(w, "dashboard/index.html", data); err != nil {
 		h.errs.ServerError(w, r, err)

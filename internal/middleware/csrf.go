@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"mime"
 	"net/http"
 
 	"github.com/remorac/mutabaah/internal/services"
@@ -12,6 +13,10 @@ const CSRFFieldName = "_csrf"
 // CSRFHeaderName is the alternative header HTMX/AJAX clients can use to
 // supply the token.
 const CSRFHeaderName = "X-CSRF-Token"
+
+// maxCSRFMultipartBytes bounds multipart parsing done only to read the CSRF
+// field before a handler sees the request.
+const maxCSRFMultipartBytes = 6 << 20
 
 // CSRF gates state-changing requests: any non-safe method requires a valid
 // token tied to the current session. Safe methods (GET/HEAD/OPTIONS) pass
@@ -32,7 +37,12 @@ func CSRF(auth *services.AuthService) func(http.Handler) http.Handler {
 			}
 			supplied := r.Header.Get(CSRFHeaderName)
 			if supplied == "" {
-				if err := r.ParseForm(); err == nil {
+				if isMultipartForm(r) {
+					r.Body = http.MaxBytesReader(w, r.Body, maxCSRFMultipartBytes)
+					if err := r.ParseMultipartForm(maxCSRFMultipartBytes); err == nil {
+						supplied = r.PostFormValue(CSRFFieldName)
+					}
+				} else if err := r.ParseForm(); err == nil {
 					supplied = r.PostFormValue(CSRFFieldName)
 				}
 			}
@@ -43,6 +53,11 @@ func CSRF(auth *services.AuthService) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func isMultipartForm(r *http.Request) bool {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return err == nil && mediaType == "multipart/form-data"
 }
 
 func isSafeMethod(m string) bool {

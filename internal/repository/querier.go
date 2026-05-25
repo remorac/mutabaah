@@ -42,6 +42,7 @@ type Querier interface {
 	UpdateMensesPeriod(ctx context.Context, arg UpdateMensesPeriodParams) error
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
+	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 }
 

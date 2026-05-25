@@ -66,6 +66,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := os.MkdirAll("web/static/avatars", 0o755); err != nil {
+		logger.Error("mkdir avatars", "err", err)
+		os.Exit(1)
+	}
+
 	errorPages := handlers.NewErrorPages(tmpl, logger)
 	authHandler := handlers.NewAuthHandler(auth, tmpl, logger, cfg.SecureCookies)
 	dashHandler := handlers.NewDashboardHandler(auth, tasks, tmpl, errorPages, logger)
@@ -110,6 +115,7 @@ func main() {
 		r.Get("/calendar/day", calHandler.Day)
 		r.Get("/settings/profile", profileHandler.Show)
 		r.Post("/settings/profile", profileHandler.ChangePassword)
+		r.Post("/settings/profile/picture", profileHandler.UploadPicture)
 		r.Post("/settings/periods", profileHandler.CreatePeriod)
 		r.Post("/settings/periods/{id}/delete", profileHandler.DeletePeriod)
 	})

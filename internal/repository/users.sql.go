@@ -7,6 +7,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 )
 
 const countAdmins = `-- name: CountAdmins :one
@@ -66,7 +67,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, name, role, created_at, updated_at
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
 FROM users
 WHERE email = ?
 `
@@ -82,12 +83,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AvatarPath,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, name, role, created_at, updated_at
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
 FROM users
 WHERE id = ?
 `
@@ -103,12 +105,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AvatarPath,
 	)
 	return i, err
 }
 
 const listAllUsers = `-- name: ListAllUsers :many
-SELECT id, email, password_hash, name, role, created_at, updated_at
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
 FROM users
 ORDER BY name ASC
 `
@@ -130,6 +133,7 @@ func (q *Queries) ListAllUsers(ctx context.Context) ([]User, error) {
 			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AvatarPath,
 		); err != nil {
 			return nil, err
 		}
@@ -145,7 +149,7 @@ func (q *Queries) ListAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, password_hash, name, role, created_at, updated_at
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
 FROM users
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
@@ -173,6 +177,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AvatarPath,
 		); err != nil {
 			return nil, err
 		}
@@ -207,6 +212,22 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.Role,
 		arg.ID,
 	)
+	return err
+}
+
+const updateUserAvatar = `-- name: UpdateUserAvatar :exec
+UPDATE users
+SET avatar_path = ?
+WHERE id = ?
+`
+
+type UpdateUserAvatarParams struct {
+	AvatarPath sql.NullString `json:"avatar_path"`
+	ID         int64          `json:"id"`
+}
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserAvatar, arg.AvatarPath, arg.ID)
 	return err
 }
 

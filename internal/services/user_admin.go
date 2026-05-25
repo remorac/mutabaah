@@ -177,6 +177,16 @@ func (s *UserAdminService) Delete(ctx context.Context, id int64) error {
 	return s.q.DeleteUser(ctx, id)
 }
 
+// UpdateAvatar sets (or clears, when filename is empty) the user's avatar file
+// reference. The filename is just the basename stored in web/static/avatars/;
+// callers are responsible for the on-disk write.
+func (s *UserAdminService) UpdateAvatar(ctx context.Context, userID int64, filename string) error {
+	return s.q.UpdateUserAvatar(ctx, repository.UpdateUserAvatarParams{
+		AvatarPath: sql.NullString{String: filename, Valid: filename != ""},
+		ID:         userID,
+	})
+}
+
 // ChangePassword is the self-service flow. The caller must supply a new
 // password meeting MinPasswordLength. All of the user's sessions are revoked on
 // success.

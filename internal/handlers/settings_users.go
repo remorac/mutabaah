@@ -104,12 +104,7 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := userListView{
-		BaseView: BaseView{
-			Title:     "Users — Settings",
-			UserName:  current.Name,
-			UserRole:  string(current.Role),
-			CSRFToken: token,
-		},
+		BaseView:   NewBaseView(current, token, "Users — Settings"),
 		Rows:       rows,
 		Page:       page,
 		TotalPages: totalPages,
@@ -132,12 +127,7 @@ func (h *SettingsUsersHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 	token := h.auth.CSRFToken(sid)
 
 	view := userFormView{
-		BaseView: BaseView{
-			Title:     "New User — Settings",
-			UserName:  current.Name,
-			UserRole:  string(current.Role),
-			CSRFToken: token,
-		},
+		BaseView:   NewBaseView(current, token, "New User — Settings"),
 		IsNew:      true,
 		FormAction: "/settings/users",
 		Role:       string(repository.UsersRoleUser),
@@ -165,12 +155,7 @@ func (h *SettingsUsersHandler) Create(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			h.renderFormError(w, userFormView{
-				BaseView: BaseView{
-					Title:     "New User — Settings",
-					UserName:  current.Name,
-					UserRole:  string(current.Role),
-					CSRFToken: token,
-				},
+				BaseView:   NewBaseView(current, token, "New User — Settings"),
 				IsNew:      true,
 				FormAction: "/settings/users",
 				Errors:     ve.Fields,
@@ -211,12 +196,7 @@ func (h *SettingsUsersHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 
 	isSelf := u.ID == current.ID
 	view := userFormView{
-		BaseView: BaseView{
-			Title:     "Edit User — Settings",
-			UserName:  current.Name,
-			UserRole:  string(current.Role),
-			CSRFToken: token,
-		},
+		BaseView:   NewBaseView(current, token, "Edit User — Settings"),
 		IsNew:      false,
 		FormAction: "/settings/users/" + strconv.FormatInt(id, 10),
 		DeleteURL:  "/settings/users/" + strconv.FormatInt(id, 10) + "/delete",
@@ -253,12 +233,7 @@ func (h *SettingsUsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			h.renderFormError(w, userFormView{
-				BaseView: BaseView{
-					Title:     "Edit User — Settings",
-					UserName:  current.Name,
-					UserRole:  string(current.Role),
-					CSRFToken: token,
-				},
+				BaseView:   NewBaseView(current, token, "Edit User — Settings"),
 				IsNew:      false,
 				FormAction: "/settings/users/" + strconv.FormatInt(id, 10),
 				DeleteURL:  "/settings/users/" + strconv.FormatInt(id, 10) + "/delete",
@@ -278,12 +253,7 @@ func (h *SettingsUsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, services.ErrLastAdmin) {
 			h.renderFormError(w, userFormView{
-				BaseView: BaseView{
-					Title:     "Edit User — Settings",
-					UserName:  current.Name,
-					UserRole:  string(current.Role),
-					CSRFToken: token,
-				},
+				BaseView:     NewBaseView(current, token, "Edit User — Settings"),
 				IsNew:        false,
 				FormAction:   "/settings/users/" + strconv.FormatInt(id, 10),
 				DeleteURL:    "/settings/users/" + strconv.FormatInt(id, 10) + "/delete",

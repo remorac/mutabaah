@@ -22,6 +22,7 @@
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Title</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Frequency</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Description</th>
+          <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Period</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Window</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Status</th>
           <th class="w-16"></th>
@@ -38,6 +39,16 @@
           <td class="text-sm max-w-48">
             {{if .Description}}
               <span class="block truncate" title="{{.Description}}">{{.Description}}</span>
+            {{else}}
+              <span class="opacity-40">—</span>
+            {{end}}
+          </td>
+          <td>
+            {{if .ExemptDuringMenses}}
+              <span class="badge badge-sm bg-pink-100 text-pink-700 border-pink-200 font-normal" title="Exempt during period">
+                <i data-lucide="moon" class="h-3 w-3"></i>
+                exempt
+              </span>
             {{else}}
               <span class="opacity-40">—</span>
             {{end}}
@@ -99,6 +110,12 @@
           <div class="flex items-center gap-2">
             <span class="text-xs font-mono opacity-50">#{{.Sequence}}</span>
             <span class="badge badge-outline badge-sm font-normal">{{.Frequency}}</span>
+            {{if .ExemptDuringMenses}}
+            <span class="badge badge-sm bg-pink-100 text-pink-700 border-pink-200 font-normal" title="Exempt during period">
+              <i data-lucide="moon" class="h-3 w-3"></i>
+              exempt
+            </span>
+            {{end}}
           </div>
           <h2 class="mt-2 break-words text-base font-bold leading-snug">{{.Title}}</h2>
           <p class="mt-1 break-words text-sm opacity-70">

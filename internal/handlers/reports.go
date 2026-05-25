@@ -104,12 +104,7 @@ func (h *ReportHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view := reportPageView{
-		BaseView: BaseView{
-			Title:     "Report — Mutaba'ah Tracker",
-			UserName:  current.Name,
-			UserRole:  string(current.Role),
-			CSRFToken: token,
-		},
+		BaseView:        NewBaseView(current, token, "Report — Mutaba'ah Tracker"),
 		MonthValue:      report.MonthValue,
 		MonthLabel:      report.MonthLabel,
 		GroupByTasks:    report.GroupByTasks,

@@ -3,17 +3,17 @@ INSERT INTO users (email, password_hash, name, role)
 VALUES (?, ?, ?, ?);
 
 -- name: GetUserByID :one
-SELECT id, email, password_hash, name, role, created_at, updated_at
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
 FROM users
 WHERE id = ?;
 
 -- name: GetUserByEmail :one
-SELECT id, email, password_hash, name, role, created_at, updated_at
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
 FROM users
 WHERE email = ?;
 
 -- name: ListUsers :many
-SELECT id, email, password_hash, name, role, created_at, updated_at
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
 FROM users
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?;
@@ -34,10 +34,15 @@ UPDATE users
 SET password_hash = ?
 WHERE id = ?;
 
+-- name: UpdateUserAvatar :exec
+UPDATE users
+SET avatar_path = ?
+WHERE id = ?;
+
 -- name: DeleteUser :exec
 DELETE FROM users WHERE id = ?;
 
 -- name: ListAllUsers :many
-SELECT id, email, password_hash, name, role, created_at, updated_at
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
 FROM users
 ORDER BY name ASC;

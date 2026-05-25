@@ -14,12 +14,30 @@
 
   <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body flex flex-row items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-accent/10 text-accent grid place-items-center shrink-0">
-        <i data-lucide="user" class="w-6 h-6"></i>
-      </div>
+      <form method="POST" enctype="multipart/form-data" action="/settings/profile/picture" class="shrink-0">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+        <input id="avatar-upload" type="file" name="avatar" accept="image/jpeg,image/png" required class="hidden" data-avatar-input />
+        <label for="avatar-upload" class="relative block cursor-pointer rounded-full transition hover:opacity-80 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary" title="Change profile picture">
+          {{if .AvatarPath}}
+          <span class="avatar">
+            <span class="w-12 h-12 overflow-hidden rounded-full">
+              <img src="{{.AvatarPath}}" alt="{{.UserName}}" loading="lazy" class="h-full w-full rounded-full object-cover" />
+            </span>
+          </span>
+          {{else}}
+          <span class="w-12 h-12 rounded-full bg-accent/10 text-accent grid place-items-center">
+            <i data-lucide="user" class="w-6 h-6"></i>
+          </span>
+          {{end}}
+          <span class="absolute -bottom-1 -left-1 grid h-5 w-5 place-items-center rounded-full border border-base-100 bg-base-300 text-base-content shadow-sm">
+            <i data-lucide="camera" class="h-3 w-3"></i>
+          </span>
+        </label>
+      </form>
       <div>
         <div class="text-base font-bold">{{.UserName}}</div>
         <div class="text-sm opacity-60">{{.Email}}</div>
+        {{with index .Errors "avatar"}}<div class="text-error text-xs mt-1">{{.}}</div>{{end}}
       </div>
     </div>
   </div>
@@ -88,5 +106,12 @@
     to { opacity: 1; transform: translateY(0); }
   }
 </style>
-<script>if (window.lucide) window.lucide.createIcons();</script>
+<script>
+  document.querySelectorAll("[data-avatar-input]").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.files && input.files.length > 0) input.form.requestSubmit();
+    });
+  });
+  if (window.lucide) window.lucide.createIcons();
+</script>
 {{end}}

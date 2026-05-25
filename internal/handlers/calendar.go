@@ -93,14 +93,9 @@ func (h *CalendarHandler) Month(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := calendarPageView{
-		BaseView: BaseView{
-			Title:     "Calendar — Mutaba'ah Tracker",
-			UserName:  user.Name,
-			UserRole:  string(user.Role),
-			CSRFToken: token,
-		},
-		Grid: grid,
-		Day:  day,
+		BaseView: NewBaseView(user, token, "Calendar — Mutaba'ah Tracker"),
+		Grid:     grid,
+		Day:      day,
 	}
 	if err := h.tmpl.Render(w, "calendar/index.html", data); err != nil {
 		h.errs.ServerError(w, r, err)

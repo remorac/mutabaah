@@ -29,16 +29,17 @@ func NewSettingsTasksHandler(auth *services.AuthService, admin *services.TaskAdm
 }
 
 type taskListRow struct {
-	ID          int64
-	Title       string
-	Description string
-	Frequency   string
-	StartDate   string
-	EndDate     string
-	Active      bool
-	Sequence    int32
-	IsFirst     bool
-	IsLast      bool
+	ID                 int64
+	Title              string
+	Description        string
+	Frequency          string
+	StartDate          string
+	EndDate            string
+	Active             bool
+	ExemptDuringMenses bool
+	Sequence           int32
+	IsFirst            bool
+	IsLast             bool
 }
 
 type taskListView struct {
@@ -85,27 +86,23 @@ func (h *SettingsTasksHandler) List(w http.ResponseWriter, r *http.Request) {
 			end = t.EndDate.Time.Format("2006-01-02")
 		}
 		rows = append(rows, taskListRow{
-			ID:          t.ID,
-			Title:       t.Title,
-			Description: desc,
-			Frequency:   string(t.Frequency),
-			StartDate:   t.StartDate.Format("2006-01-02"),
-			EndDate:     end,
-			Active:      t.Active,
-			Sequence:    t.Sequence,
-			IsFirst:     i == 0,
-			IsLast:      i == len(tasks)-1,
+			ID:                 t.ID,
+			Title:              t.Title,
+			Description:        desc,
+			Frequency:          string(t.Frequency),
+			StartDate:          t.StartDate.Format("2006-01-02"),
+			EndDate:            end,
+			Active:             t.Active,
+			ExemptDuringMenses: t.ExemptDuringMenses,
+			Sequence:           t.Sequence,
+			IsFirst:            i == 0,
+			IsLast:             i == len(tasks)-1,
 		})
 	}
 
 	view := taskListView{
-		BaseView: BaseView{
-			Title:     "Tasks — Settings",
-			UserName:  user.Name,
-			UserRole:  string(user.Role),
-			CSRFToken: token,
-		},
-		Rows: rows,
+		BaseView: NewBaseView(user, token, "Tasks — Settings"),
+		Rows:     rows,
 	}
 	if err := h.tmpl.Render(w, "settings/tasks/index.html", view); err != nil {
 		h.logger.Error("render settings tasks list", "err", err)
@@ -120,12 +117,7 @@ func (h *SettingsTasksHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 	token := h.auth.CSRFToken(sid)
 
 	view := taskFormView{
-		BaseView: BaseView{
-			Title:     "New Task — Settings",
-			UserName:  user.Name,
-			UserRole:  string(user.Role),
-			CSRFToken: token,
-		},
+		BaseView:    NewBaseView(user, token, "New Task — Settings"),
 		IsNew:       true,
 		FormAction:  "/settings/tasks",
 		Active:      true,
@@ -154,12 +146,7 @@ func (h *SettingsTasksHandler) Create(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			h.renderFormError(w, r, taskFormView{
-				BaseView: BaseView{
-					Title:     "New Task — Settings",
-					UserName:  user.Name,
-					UserRole:  string(user.Role),
-					CSRFToken: token,
-				},
+				BaseView:           NewBaseView(user, token, "New Task — Settings"),
 				IsNew:              true,
 				FormAction:         "/settings/tasks",
 				Errors:             ve.Fields,
@@ -212,12 +199,7 @@ func (h *SettingsTasksHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 	}
 
 	view := taskFormView{
-		BaseView: BaseView{
-			Title:     "Edit Task — Settings",
-			UserName:  user.Name,
-			UserRole:  string(user.Role),
-			CSRFToken: token,
-		},
+		BaseView:           NewBaseView(user, token, "Edit Task — Settings"),
 		IsNew:              false,
 		FormAction:         "/settings/tasks/" + strconv.FormatInt(id, 10),
 		DeleteURL:          "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",
@@ -257,12 +239,7 @@ func (h *SettingsTasksHandler) Update(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			h.renderFormError(w, r, taskFormView{
-				BaseView: BaseView{
-					Title:     "Edit Task — Settings",
-					UserName:  user.Name,
-					UserRole:  string(user.Role),
-					CSRFToken: token,
-				},
+				BaseView:           NewBaseView(user, token, "Edit Task — Settings"),
 				IsNew:              false,
 				FormAction:         "/settings/tasks/" + strconv.FormatInt(id, 10),
 				DeleteURL:          "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",
