@@ -123,7 +123,8 @@ func (h *ProfileHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// CreatePeriod handles POST /settings/periods.
+// CreatePeriod handles POST /settings/periods. HX-Request returns only the
+// refreshed #periods-section fragment; plain form posts redirect.
 func (h *ProfileHandler) CreatePeriod(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -140,6 +141,10 @@ func (h *ProfileHandler) CreatePeriod(w http.ResponseWriter, r *http.Request) {
 	if _, err := h.menses.Create(r.Context(), user.ID, input); err != nil {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
+			if isPartialRequest(r) {
+				h.renderPeriodsSection(w, r, user, token, ve.Fields, input.StartDate, input.EndDate, http.StatusUnprocessableEntity)
+				return
+			}
 			periods, perr := h.menses.List(r.Context(), user.ID)
 			if perr != nil {
 				h.errs.ServerError(w, r, perr)
@@ -164,12 +169,19 @@ func (h *ProfileHandler) CreatePeriod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.logger.Info("menses period created", "user", user.ID)
+	if isPartialRequest(r) {
+		h.renderPeriodsSection(w, r, user, token, nil, "", "", http.StatusOK)
+		return
+	}
 	http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
 }
 
-// DeletePeriod handles POST /settings/periods/{id}/delete.
+// DeletePeriod handles POST /settings/periods/{id}/delete. HX-Request returns
+// only the refreshed #periods-section fragment.
 func (h *ProfileHandler) DeletePeriod(w http.ResponseWriter, r *http.Request) {
 	user, _ := apmw.UserFromContext(r.Context())
+	sid := apmw.SessionIDFromContext(r.Context())
+	token := h.auth.CSRFToken(sid)
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		http.Error(w, "bad id", http.StatusBadRequest)
@@ -184,7 +196,31 @@ func (h *ProfileHandler) DeletePeriod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.logger.Info("menses period deleted", "id", id, "user", user.ID)
+	if isPartialRequest(r) {
+		h.renderPeriodsSection(w, r, user, token, nil, "", "", http.StatusOK)
+		return
+	}
 	http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
+}
+
+func (h *ProfileHandler) renderPeriodsSection(w http.ResponseWriter, r *http.Request, user repository.User, csrfToken string, fieldErrors map[string]string, newStart, newEnd string, status int) {
+	periods, err := h.menses.List(r.Context(), user.ID)
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	view := profileView{
+		BaseView:     BaseView{CSRFToken: csrfToken},
+		Periods:      rowsFromPeriods(periods),
+		PeriodErrors: fieldErrors,
+		NewStart:     newStart,
+		NewEnd:       newEnd,
+	}
+	w.WriteHeader(status)
+	if err := h.tmpl.RenderPartial(w, "settings/_periods_section.html", view); err != nil {
+		h.logger.Error("render periods section", "err", err)
+		http.Error(w, "render error", http.StatusInternalServerError)
+	}
 }
 
 func (h *ProfileHandler) render(w http.ResponseWriter, view profileView, status int) {
