@@ -11,8 +11,10 @@ import (
 // the usual clickjacking / MIME / referrer guards.
 //
 // The CSP allows the specific CDNs referenced by web/templates/layout.html
-// (Tailwind, DaisyUI, Lucide, Alpine, HTMX, Google Fonts). 'unsafe-inline' is
-// retained for scripts because per-page initializers like
+// (Tailwind, DaisyUI, Lucide, Alpine, HTMX, Google Fonts). connect-src also
+// allows the script CDNs so browser/devtools source-map lookups do not trigger
+// CSP noise after those scripts load. 'unsafe-inline' is retained for scripts
+// because per-page initializers like
 // `window.lucide.createIcons()` run inline; tightening this to nonces is a
 // Phase 9 task.
 func SecurityHeaders(next http.Handler) http.Handler {
@@ -22,7 +24,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
 		"img-src 'self' data:",
 		"font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com",
-		"connect-src 'self'",
+		"connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
 		"form-action 'self'",
