@@ -42,11 +42,6 @@ type TaskInput struct {
 	Sequence    string // integer as string; defaults to 0
 }
 
-// TaskListFilter narrows the settings task listing.
-type TaskListFilter struct {
-	Search string // case-insensitive substring on title or description
-}
-
 // TaskAdminService implements admin-side task CRUD with validation.
 type TaskAdminService struct {
 	q *repository.Queries
@@ -56,30 +51,9 @@ func NewTaskAdminService(q *repository.Queries) *TaskAdminService {
 	return &TaskAdminService{q: q}
 }
 
-// List returns all tasks (active + inactive) matching the filter, sorted by
-// creation time descending — matches ListTasks ordering.
-func (s *TaskAdminService) List(ctx context.Context, f TaskListFilter) ([]repository.Task, error) {
-	tasks, err := s.q.ListTasks(ctx)
-	if err != nil {
-		return nil, err
-	}
-	search := strings.ToLower(strings.TrimSpace(f.Search))
-
-	out := tasks[:0]
-	for _, t := range tasks {
-		if search != "" {
-			title := strings.ToLower(t.Title)
-			desc := ""
-			if t.Description.Valid {
-				desc = strings.ToLower(t.Description.String)
-			}
-			if !strings.Contains(title, search) && !strings.Contains(desc, search) {
-				continue
-			}
-		}
-		out = append(out, t)
-	}
-	return out, nil
+// List returns all tasks (active + inactive) in ListTasks ordering.
+func (s *TaskAdminService) List(ctx context.Context) ([]repository.Task, error) {
+	return s.q.ListTasks(ctx)
 }
 
 // Get fetches a task by id.

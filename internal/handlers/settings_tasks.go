@@ -43,8 +43,7 @@ type taskListRow struct {
 
 type taskListView struct {
 	BaseView
-	Search string
-	Rows   []taskListRow
+	Rows []taskListRow
 }
 
 type taskFormView struct {
@@ -69,11 +68,7 @@ func (h *SettingsTasksHandler) List(w http.ResponseWriter, r *http.Request) {
 	sid := apmw.SessionIDFromContext(r.Context())
 	token := h.auth.CSRFToken(sid)
 
-	q := r.URL.Query()
-	filter := services.TaskListFilter{
-		Search: q.Get("q"),
-	}
-	tasks, err := h.admin.List(r.Context(), filter)
+	tasks, err := h.admin.List(r.Context())
 	if err != nil {
 		h.errs.ServerError(w, r, err)
 		return
@@ -109,8 +104,7 @@ func (h *SettingsTasksHandler) List(w http.ResponseWriter, r *http.Request) {
 			UserRole:  string(user.Role),
 			CSRFToken: token,
 		},
-		Search: filter.Search,
-		Rows:   rows,
+		Rows: rows,
 	}
 	if err := h.tmpl.Render(w, "settings/tasks/index.html", view); err != nil {
 		h.logger.Error("render settings tasks list", "err", err)

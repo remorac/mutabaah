@@ -12,22 +12,6 @@
     </a>
   </div>
 
-  <form method="GET" action="/settings/tasks" class="flex flex-col gap-2 sm:flex-row">
-    <label class="input input-bordered input-sm flex flex-1 items-center gap-2">
-      <i data-lucide="search" class="w-4 h-4 opacity-60"></i>
-      <input type="text" name="q" value="{{.Search}}" placeholder="Search tasks or descriptions" class="grow" />
-    </label>
-    <div class="flex gap-2">
-      <button type="submit" class="btn btn-sm btn-primary">
-        <i data-lucide="search" class="w-4 h-4"></i>
-        Search
-      </button>
-      {{if .Search}}
-      <a href="/settings/tasks" class="btn btn-sm btn-ghost">Clear</a>
-      {{end}}
-    </div>
-  </form>
-
   <div class="card bg-base-100 shadow-sm">
     <div class="card-body p-0">
       {{if .Rows}}
@@ -63,19 +47,19 @@
               </td>
               <td class="text-right whitespace-nowrap">
                 <div class="inline-flex items-center gap-1">
-                  <form method="POST" action="/settings/tasks/{{.ID}}/move-up{{if $.Search}}?q={{urlquery $.Search}}{{end}}" class="inline">
+                  <form method="POST" action="/settings/tasks/{{.ID}}/move-up" class="inline">
                     <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
                     <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move up" {{if .IsFirst}}disabled{{end}}>
                       <i data-lucide="arrow-up" class="w-4 h-4"></i>
                     </button>
                   </form>
-                  <form method="POST" action="/settings/tasks/{{.ID}}/move-down{{if $.Search}}?q={{urlquery $.Search}}{{end}}" class="inline">
+                  <form method="POST" action="/settings/tasks/{{.ID}}/move-down" class="inline">
                     <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
                     <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move down" {{if .IsLast}}disabled{{end}}>
                       <i data-lucide="arrow-down" class="w-4 h-4"></i>
                     </button>
                   </form>
-                  <form method="POST" action="/settings/tasks/{{.ID}}/active{{if $.Search}}?q={{urlquery $.Search}}{{end}}" class="inline">
+                  <form method="POST" action="/settings/tasks/{{.ID}}/active" class="inline">
                     <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
                     {{if .Active}}
                     <input type="hidden" name="active" value="false" />
@@ -102,7 +86,7 @@
       </div>
       {{else}}
       <div class="p-6 text-center opacity-60">
-        No tasks match this search.
+        No tasks yet.
       </div>
       {{end}}
     </div>
