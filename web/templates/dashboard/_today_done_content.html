@@ -1,20 +1,12 @@
 {{define "_today_done_content.html"}}
-<div id="today-done-content" data-swap-target="#today-done-content" class="card-body">
+<div class="card-body">
   <h3 class="card-title text-sm uppercase tracking-wide opacity-70 font-semibold">
     Completed
-    <span class="badge badge-success badge-sm">{{len .TodayDone}}</span>
+    {{template "_today_done_count.html" .}}
   </h3>
-  {{if .TodayDone}}
-    <ul class="flex flex-col mt-2">
-      {{range .TodayDone}}{{template "_task_row.html" .}}{{end}}
-    </ul>
-  {{else}}
-    <div class="flex flex-col items-center text-center py-6">
-      <div class="w-12 h-12 rounded-xl bg-base-200 grid place-items-center mb-2">
-        <i data-lucide="circle-dashed" class="w-6 h-6 opacity-40"></i>
-      </div>
-      <p class="text-sm opacity-60">Nothing yet. Start with one task.</p>
-    </div>
-  {{end}}
+  <ul id="today-done-list" class="flex flex-col mt-2">
+    {{range .TodayDone}}{{template "_task_row.html" .}}{{end}}
+  </ul>
+  {{template "_today_done_empty.html" .}}
 </div>
 {{end}}

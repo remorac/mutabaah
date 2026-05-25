@@ -151,18 +151,32 @@ func TestRenderToggleFragmentsForToday(t *testing.T) {
 	}
 
 	body := rec.Body.String()
-	for _, unwanted := range []string{`id="dashboard-inner"`, `data-swap-target="#dashboard-stats"`, `data-swap-target="#dashboard-today-cards"`} {
-		if strings.Contains(body, unwanted) {
-			t.Fatalf("today fragment response included %s: %s", unwanted, body)
-		}
-	}
-	for _, want := range []string{
+	for _, unwanted := range []string{
+		`id="dashboard-inner"`,
+		`data-swap-target="#dashboard-stats"`,
+		`data-swap-target="#dashboard-today-cards"`,
 		`data-swap-target="#stat-today-content"`,
 		`data-swap-target="#stat-pending-content"`,
 		`data-swap-target="#stat-week-content"`,
 		`data-swap-target="#stat-streak-content"`,
 		`data-swap-target="#today-pending-content"`,
 		`data-swap-target="#today-done-content"`,
+	} {
+		if strings.Contains(body, unwanted) {
+			t.Fatalf("today fragment response included %s: %s", unwanted, body)
+		}
+	}
+	for _, want := range []string{
+		`data-swap-target="#stat-today-data"`,
+		`data-swap-target="#stat-pending-data"`,
+		`data-swap-target="#stat-week-data"`,
+		`data-swap-target="#stat-streak-data"`,
+		`data-swap-target="#today-pending-count"`,
+		`data-swap-target="#today-done-count"`,
+		`data-swap-target="#today-pending-empty"`,
+		`data-swap-target="#today-done-empty"`,
+		`data-remove-target="#task-row-1-2026-05-25"`,
+		`data-insert-target="#today-pending-list"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("today fragment response missing %s: %s", want, body)
@@ -202,16 +216,32 @@ func TestRenderToggleFragmentsForMissed(t *testing.T) {
 	}
 
 	body := rec.Body.String()
-	for _, unwanted := range []string{`id="dashboard-inner"`, `data-swap-target="#dashboard-stats"`, `data-swap-target="#dashboard-today-cards"`, `data-swap-target="#today-pending-content"`, `data-swap-target="#today-done-content"`} {
+	for _, unwanted := range []string{
+		`id="dashboard-inner"`,
+		`data-swap-target="#dashboard-stats"`,
+		`data-swap-target="#dashboard-today-cards"`,
+		`data-swap-target="#stat-today-content"`,
+		`data-swap-target="#stat-pending-content"`,
+		`data-swap-target="#stat-week-content"`,
+		`data-swap-target="#stat-streak-content"`,
+		`data-swap-target="#today-pending-content"`,
+		`data-swap-target="#today-done-content"`,
+		`data-swap-target="#today-pending-count"`,
+		`data-swap-target="#today-done-count"`,
+		`data-swap-target="#today-pending-empty"`,
+		`data-swap-target="#today-done-empty"`,
+		`data-remove-target=`,
+		`data-insert-target=`,
+	} {
 		if strings.Contains(body, unwanted) {
 			t.Fatalf("missed fragment response included %s: %s", unwanted, body)
 		}
 	}
 	for _, want := range []string{
-		`data-swap-target="#stat-today-content"`,
-		`data-swap-target="#stat-pending-content"`,
-		`data-swap-target="#stat-week-content"`,
-		`data-swap-target="#stat-streak-content"`,
+		`data-swap-target="#stat-today-data"`,
+		`data-swap-target="#stat-pending-data"`,
+		`data-swap-target="#stat-week-data"`,
+		`data-swap-target="#stat-streak-data"`,
 		`data-swap-target="#task-row-2-2026-05-24"`,
 	} {
 		if !strings.Contains(body, want) {

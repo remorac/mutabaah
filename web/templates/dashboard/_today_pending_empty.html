@@ -1,0 +1,12 @@
+{{define "_today_pending_empty.html"}}
+<div id="today-pending-empty" data-swap-target="#today-pending-empty">
+  {{if not .TodayPending}}
+  <div class="flex flex-col items-center text-center py-6">
+    <div class="w-12 h-12 rounded-xl bg-success/10 text-success grid place-items-center mb-2">
+      <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+    </div>
+    <p class="text-sm font-medium text-success">All done. Alhamdulillah.</p>
+  </div>
+  {{end}}
+</div>
+{{end}}

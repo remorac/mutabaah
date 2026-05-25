@@ -1,0 +1,6 @@
+{{define "_stat_streak_data.html"}}
+<div id="stat-streak-data" data-swap-target="#stat-streak-data" class="mt-2">
+  <div class="text-2xl font-bold leading-none">{{.Stats.Streak}}</div>
+  <div class="text-xs opacity-60 mt-1">day{{if ne .Stats.Streak 1}}s{{end}} on track</div>
+</div>
+{{end}}

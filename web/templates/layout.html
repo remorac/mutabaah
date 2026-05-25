@@ -354,7 +354,10 @@
 
         const html = await response.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
-        const fragments = Array.from(doc.body.children).filter((node) => node.matches("[data-swap-target]"));
+        const nodes = Array.from(doc.body.children);
+        const fragments = nodes.filter((node) => node.matches("[data-swap-target]"));
+        const removals = nodes.filter((node) => node.matches("[data-remove-target]"));
+        const insertions = nodes.filter((node) => node.matches("[data-insert-target]"));
 
         fragments.forEach((fragment) => {
           const target = document.querySelector(fragment.dataset.swapTarget);
@@ -365,6 +368,31 @@
             target.replaceWith(replacement);
             if (window.lucide) window.lucide.createIcons();
           }, 150);
+        });
+
+        removals.forEach((operation) => {
+          const target = document.querySelector(operation.dataset.removeTarget);
+          if (!target) return;
+          target.classList.add("ajax-swapping");
+          window.setTimeout(() => target.remove(), 150);
+        });
+
+        insertions.forEach((operation) => {
+          const target = document.querySelector(operation.dataset.insertTarget);
+          if (!target) return;
+          const template = operation.tagName === "TEMPLATE" ? operation : operation.querySelector("template");
+          const child = template ? template.content.firstElementChild : operation.firstElementChild;
+          if (!child) return;
+          const existing = child.id ? document.getElementById(child.id) : null;
+          if (existing) existing.remove();
+          const item = document.importNode(child, true);
+          const before = operation.dataset.insertBefore ? document.querySelector(operation.dataset.insertBefore) : null;
+          if (before && before.parentElement === target) {
+            target.insertBefore(item, before);
+          } else {
+            target.appendChild(item);
+          }
+          if (window.lucide) window.lucide.createIcons();
         });
       } catch (error) {
         button.disabled = false;

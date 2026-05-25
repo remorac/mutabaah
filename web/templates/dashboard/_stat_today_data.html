@@ -1,0 +1,11 @@
+{{define "_stat_today_data.html"}}
+<div id="stat-today-data" data-swap-target="#stat-today-data">
+  <div class="mt-2">
+    <div class="text-2xl font-bold leading-none">{{.Stats.TodayPct}}%</div>
+    <div class="text-xs opacity-60 mt-1">{{.Stats.TodayDone}}/{{.Stats.TodayTotal}} completed</div>
+  </div>
+  <div class="mt-2 h-1.5 rounded-full bg-base-200 overflow-hidden">
+    <div class="h-full rounded-full bg-primary transition-all duration-500" style="width: {{.Stats.TodayPct}}%"></div>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,11 @@
+{{define "_stat_week_data.html"}}
+<div id="stat-week-data" data-swap-target="#stat-week-data">
+  <div class="mt-2">
+    <div class="text-2xl font-bold leading-none">{{.Stats.WeeklyPct}}%</div>
+    <div class="text-xs opacity-60 mt-1">{{.Stats.WeeklyDone}}/{{.Stats.WeeklyTotal}} completed</div>
+  </div>
+  <div class="mt-2 h-1.5 rounded-full bg-base-200 overflow-hidden">
+    <div class="h-full rounded-full bg-success transition-all duration-500" style="width: {{.Stats.WeeklyPct}}%"></div>
+  </div>
+</div>
+{{end}}

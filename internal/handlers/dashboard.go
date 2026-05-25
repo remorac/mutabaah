@@ -164,10 +164,7 @@ func (h *DashboardHandler) renderToggleFragments(w http.ResponseWriter, inner da
 		return err
 	}
 	if dateOnly(dueDate).Equal(dateOnly(today)) {
-		if err := h.tmpl.RenderPartial(w, "dashboard/_today_pending_content.html", inner); err != nil {
-			return err
-		}
-		return h.tmpl.RenderPartial(w, "dashboard/_today_done_content.html", inner)
+		return h.renderTodayToggleFragments(w, inner, taskID, dueDate)
 	}
 
 	rowID := taskRowID(taskID, dueDate)
@@ -184,16 +181,75 @@ func (h *DashboardHandler) renderToggleFragments(w http.ResponseWriter, inner da
 
 func (h *DashboardHandler) renderStatFragments(w http.ResponseWriter, inner dashboardInnerView) error {
 	for _, name := range []string{
-		"dashboard/_stat_today_content.html",
-		"dashboard/_stat_pending_content.html",
-		"dashboard/_stat_week_content.html",
-		"dashboard/_stat_streak_content.html",
+		"dashboard/_stat_today_data.html",
+		"dashboard/_stat_pending_data.html",
+		"dashboard/_stat_week_data.html",
+		"dashboard/_stat_streak_data.html",
 	} {
 		if err := h.tmpl.RenderPartial(w, name, inner); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (h *DashboardHandler) renderTodayToggleFragments(w http.ResponseWriter, inner dashboardInnerView, taskID int64, dueDate time.Time) error {
+	for _, name := range []string{
+		"dashboard/_today_pending_count.html",
+		"dashboard/_today_done_count.html",
+		"dashboard/_today_pending_empty.html",
+		"dashboard/_today_done_empty.html",
+	} {
+		if err := h.tmpl.RenderPartial(w, name, inner); err != nil {
+			return err
+		}
+	}
+
+	rowID := taskRowID(taskID, dueDate)
+	row, listID, beforeID, ok := findTodayRowPlacement(inner, taskID, dueDate)
+	if !ok {
+		_, err := fmt.Fprintf(w, `<template data-remove-target="#%s"></template>`, rowID)
+		return err
+	}
+	if _, err := fmt.Fprintf(w, `<template data-remove-target="#%s"></template>`, rowID); err != nil {
+		return err
+	}
+	beforeAttr := ""
+	if beforeID != "" {
+		beforeAttr = fmt.Sprintf(` data-insert-before="#%s"`, beforeID)
+	}
+	if _, err := fmt.Fprintf(w, `<template data-insert-target="#%s"%s>`, listID, beforeAttr); err != nil {
+		return err
+	}
+	if err := h.tmpl.RenderPartial(w, "dashboard/_task_row.html", row); err != nil {
+		return err
+	}
+	_, err := fmt.Fprint(w, `</template>`)
+	return err
+}
+
+func findTodayRowPlacement(inner dashboardInnerView, taskID int64, dueDate time.Time) (taskRowView, string, string, bool) {
+	dueDateStr := dueDate.Format("2006-01-02")
+	if row, beforeID, ok := findRowPlacement(inner.TodayPending, taskID, dueDateStr); ok {
+		return row, "today-pending-list", beforeID, true
+	}
+	if row, beforeID, ok := findRowPlacement(inner.TodayDone, taskID, dueDateStr); ok {
+		return row, "today-done-list", beforeID, true
+	}
+	return taskRowView{}, "", "", false
+}
+
+func findRowPlacement(rows []taskRowView, taskID int64, dueDate string) (taskRowView, string, bool) {
+	for i, row := range rows {
+		if row.TaskID == taskID && row.DueDate == dueDate {
+			beforeID := ""
+			if i+1 < len(rows) {
+				beforeID = rows[i+1].RowID
+			}
+			return row, beforeID, true
+		}
+	}
+	return taskRowView{}, "", false
 }
 
 func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csrfToken string) (dashboardInnerView, error) {
