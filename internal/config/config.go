@@ -13,6 +13,7 @@ type Config struct {
 	SessionSecret   string
 	SessionLifetime int // hours
 	SecureCookies   bool
+	AvatarDir       string
 }
 
 // Load reads configuration from the environment. .env loading should already
@@ -24,6 +25,7 @@ func Load() (Config, error) {
 		SessionSecret:   os.Getenv("SESSION_SECRET"),
 		SessionLifetime: getenvInt("SESSION_LIFETIME_HOURS", 24*14),
 		SecureCookies:   getenvBool("SECURE_COOKIES", false),
+		AvatarDir:       getenv("APP_AVATAR_DIR", "web/static/avatars"),
 	}
 	if cfg.DatabaseDSN == "" {
 		return cfg, errors.New("APP_DATABASE_DSN is required")

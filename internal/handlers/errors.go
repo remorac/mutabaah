@@ -58,6 +58,14 @@ func (e *ErrorPages) ServerError(w http.ResponseWriter, r *http.Request, err err
 		"We hit an unexpected problem. The error has been logged; please try again.")
 }
 
+// ServerErrorMessage serves a styled 500 page with a caller-supplied message.
+// Use this for failures where the next operator action is clearer than the
+// generic error page, while still logging the underlying error.
+func (e *ErrorPages) ServerErrorMessage(w http.ResponseWriter, r *http.Request, err error, heading, message string) {
+	apmw.RequestLogger(e.logger, r).Error("server error", "err", err, "path", r.URL.Path, "heading", heading)
+	e.render(w, r, http.StatusInternalServerError, "alert-triangle", "error", heading, message)
+}
+
 func (e *ErrorPages) render(w http.ResponseWriter, r *http.Request, code int, icon, tone, heading, message string) {
 	// HTMX / AJAX clients get the short plain-text response; rendering the
 	// layout would dump the entire page into a swap target.

@@ -21,10 +21,6 @@ import (
 	"github.com/remorac/mutabaah/internal/services"
 )
 
-// avatarDir is the on-disk directory served by the /static handler that holds
-// uploaded profile pictures and their generated thumbnails.
-const avatarDir = "web/static/avatars"
-
 // maxAvatarBytes caps the request body for profile picture uploads.
 const maxAvatarBytes = 5 << 20
 
@@ -41,10 +37,12 @@ type ProfileHandler struct {
 	tmpl   *Templates
 	errs   *ErrorPages
 	logger *slog.Logger
+	// avatarDir is the on-disk directory served at /static/avatars.
+	avatarDir string
 }
 
-func NewProfileHandler(auth *services.AuthService, users *services.UserAdminService, menses *services.MensesAdminService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *ProfileHandler {
-	return &ProfileHandler{auth: auth, users: users, menses: menses, tmpl: tmpl, errs: errs, logger: logger}
+func NewProfileHandler(auth *services.AuthService, users *services.UserAdminService, menses *services.MensesAdminService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger, avatarDir string) *ProfileHandler {
+	return &ProfileHandler{auth: auth, users: users, menses: menses, tmpl: tmpl, errs: errs, logger: logger, avatarDir: avatarDir}
 }
 
 type periodRow struct {
@@ -207,9 +205,9 @@ func (h *ProfileHandler) DeletePeriod(w http.ResponseWriter, r *http.Request) {
 }
 
 // UploadPicture handles POST /settings/profile/picture. Accepts a JPEG or PNG
-// avatar field, stores the original plus a square thumbnail under
-// web/static/avatars/, and points the user's avatar_path at the new file. The
-// previous original/thumbnail are removed best-effort.
+// avatar field, stores the original plus a square thumbnail in h.avatarDir,
+// and points the user's avatar_path at the new file. The previous
+// original/thumbnail are removed best-effort.
 func (h *ProfileHandler) UploadPicture(w http.ResponseWriter, r *http.Request) {
 	user, _ := apmw.UserFromContext(r.Context())
 	sid := apmw.SessionIDFromContext(r.Context())
@@ -218,6 +216,7 @@ func (h *ProfileHandler) UploadPicture(w http.ResponseWriter, r *http.Request) {
 	if r.MultipartForm == nil {
 		r.Body = http.MaxBytesReader(w, r.Body, maxAvatarRequestBytes)
 		if err := r.ParseMultipartForm(maxAvatarRequestBytes); err != nil {
+			h.logger.Warn("avatar upload rejected: parse multipart form", "user", user.ID, "err", err, "limit_bytes", maxAvatarRequestBytes)
 			h.renderUploadError(w, r, user, token, "Image must be 5 MB or smaller.", http.StatusRequestEntityTooLarge)
 			return
 		}
@@ -228,6 +227,7 @@ func (h *ProfileHandler) UploadPicture(w http.ResponseWriter, r *http.Request) {
 
 	file, _, err := r.FormFile("avatar")
 	if err != nil {
+		h.logger.Warn("avatar upload rejected: missing avatar file", "user", user.ID, "err", err)
 		h.renderUploadError(w, r, user, token, "Choose a file.", http.StatusUnprocessableEntity)
 		return
 	}
@@ -235,28 +235,36 @@ func (h *ProfileHandler) UploadPicture(w http.ResponseWriter, r *http.Request) {
 
 	data, err := io.ReadAll(io.LimitReader(file, maxAvatarBytes+1))
 	if err != nil {
-		h.errs.ServerError(w, r, err)
+		h.logger.Error("avatar upload failed: read file", "user", user.ID, "err", err)
+		h.avatarUploadServerError(w, r, err, "read uploaded file",
+			"The server could not read the uploaded profile picture. Check the request body limits and retry the upload.")
 		return
 	}
 	if int64(len(data)) > maxAvatarBytes {
+		h.logger.Warn("avatar upload rejected: file too large", "user", user.ID, "bytes", len(data), "limit_bytes", maxAvatarBytes)
 		h.renderUploadError(w, r, user, token, "Image must be 5 MB or smaller.", http.StatusRequestEntityTooLarge)
 		return
 	}
 
 	_, ext, err := imageutil.Validate(data)
 	if err != nil {
+		h.logger.Warn("avatar upload rejected: unsupported image type", "user", user.ID, "err", err, "bytes", len(data))
 		h.renderUploadError(w, r, user, token, "JPEG or PNG only.", http.StatusUnprocessableEntity)
 		return
 	}
 
 	basename, err := randomBasename(user.ID)
 	if err != nil {
-		h.errs.ServerError(w, r, err)
+		h.logger.Error("avatar upload failed: generate filename", "user", user.ID, "err", err)
+		h.avatarUploadServerError(w, r, err, "generate avatar filename",
+			"The server could not generate a secure filename for the uploaded profile picture.")
 		return
 	}
 
-	if err := imageutil.SaveOriginalAndThumb(avatarDir, basename, ext, data); err != nil {
-		h.errs.ServerError(w, r, err)
+	if err := imageutil.SaveOriginalAndThumb(h.avatarDir, basename, ext, data); err != nil {
+		h.logger.Error("avatar upload failed: save original and thumbnail", "user", user.ID, "err", err, "avatar_dir", h.avatarDir, "filename", basename+ext)
+		h.avatarUploadServerError(w, r, err, "save original and thumbnail",
+			fmt.Sprintf("The server could not write the profile picture files to %s. Check that APP_AVATAR_DIR exists and is writable by the systemd service user.", h.avatarDir))
 		return
 	}
 
@@ -265,8 +273,8 @@ func (h *ProfileHandler) UploadPicture(w http.ResponseWriter, r *http.Request) {
 	if user.AvatarPath.Valid && user.AvatarPath.String != "" {
 		old := user.AvatarPath.String
 		oldBase := strings.TrimSuffix(old, filepath.Ext(old))
-		oldOrig := filepath.Join(avatarDir, old)
-		oldThumb := filepath.Join(avatarDir, "thumb_"+oldBase+".jpg")
+		oldOrig := filepath.Join(h.avatarDir, old)
+		oldThumb := filepath.Join(h.avatarDir, "thumb_"+oldBase+".jpg")
 		if err := os.Remove(oldOrig); err != nil && !errors.Is(err, os.ErrNotExist) {
 			h.logger.Warn("remove old avatar original", "err", err, "path", oldOrig)
 		}
@@ -276,12 +284,24 @@ func (h *ProfileHandler) UploadPicture(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.users.UpdateAvatar(r.Context(), user.ID, basename+ext); err != nil {
-		h.errs.ServerError(w, r, err)
+		h.logger.Error("avatar upload failed: update database", "user", user.ID, "err", err, "filename", basename+ext)
+		h.avatarUploadServerError(w, r, err, "update avatar database record",
+			"The server saved the profile picture files but could not update users.avatar_path. Check that migration 000013_add_user_avatar has been applied.")
 		return
 	}
 
 	h.logger.Info("avatar uploaded", "user", user.ID, "file", basename+ext)
 	http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
+}
+
+func (h *ProfileHandler) avatarUploadServerError(w http.ResponseWriter, r *http.Request, err error, stage, operatorHint string) {
+	h.errs.ServerErrorMessage(
+		w,
+		r,
+		err,
+		"Profile picture upload failed",
+		fmt.Sprintf("%s Failed to %s. Detail: %v", operatorHint, stage, err),
+	)
 }
 
 // renderUploadError re-renders the profile page with an inline avatar error.

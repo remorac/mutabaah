@@ -66,7 +66,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := os.MkdirAll("web/static/avatars", 0o755); err != nil {
+	if err := os.MkdirAll(cfg.AvatarDir, 0o755); err != nil {
 		logger.Error("mkdir avatars", "err", err)
 		os.Exit(1)
 	}
@@ -78,7 +78,7 @@ func main() {
 	reportHandler := handlers.NewReportHandler(auth, tasks, userAdmin, tmpl, errorPages, logger)
 	settingsTasksHandler := handlers.NewSettingsTasksHandler(auth, taskAdmin, tmpl, errorPages, logger)
 	settingsUsersHandler := handlers.NewSettingsUsersHandler(auth, userAdmin, tmpl, errorPages, logger)
-	profileHandler := handlers.NewProfileHandler(auth, userAdmin, mensesAdmin, tmpl, errorPages, logger)
+	profileHandler := handlers.NewProfileHandler(auth, userAdmin, mensesAdmin, tmpl, errorPages, logger, cfg.AvatarDir)
 
 	// Wire styled 403 into RequireAdmin (middleware can't import handlers).
 	apmw.ForbiddenHandler = errorPages.Forbidden
@@ -95,6 +95,7 @@ func main() {
 	r.NotFound(errorPages.NotFound)
 	r.MethodNotAllowed(errorPages.MethodNotAllowed)
 
+	r.Handle("/static/avatars/*", http.StripPrefix("/static/avatars/", http.FileServer(http.Dir(cfg.AvatarDir))))
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
