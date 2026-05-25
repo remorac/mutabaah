@@ -14,10 +14,10 @@
 
   <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body flex flex-row items-center gap-4">
-      <form method="POST" enctype="multipart/form-data" action="/settings/profile/picture" class="shrink-0">
+      <form method="POST" enctype="multipart/form-data" action="/settings/profile/picture" class="shrink-0" data-avatar-form>
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
         <input id="avatar-upload" type="file" name="avatar" accept="image/jpeg,image/png" required class="hidden" data-avatar-input />
-        <label for="avatar-upload" class="relative block cursor-pointer rounded-full transition hover:opacity-80 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary" title="Change profile picture">
+        <label for="avatar-upload" class="relative block cursor-pointer rounded-full transition hover:opacity-80 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary" title="Change profile picture" data-avatar-label>
           {{if .AvatarPath}}
           <span class="avatar">
             <span class="w-12 h-12 overflow-hidden rounded-full">
@@ -32,6 +32,10 @@
           <span class="absolute -bottom-1 -left-1 grid h-5 w-5 place-items-center rounded-full border border-base-100 bg-base-300 text-base-content shadow-sm">
             <i data-lucide="camera" class="h-3 w-3"></i>
           </span>
+          <span class="absolute inset-0 hidden place-items-center rounded-full bg-base-100/75 text-primary backdrop-blur-[1px]" data-avatar-loading aria-hidden="true">
+            <i data-lucide="loader-circle" class="h-5 w-5 animate-spin"></i>
+          </span>
+          <span class="sr-only" data-avatar-status aria-live="polite"></span>
         </label>
       </form>
       <div>
@@ -107,9 +111,33 @@
   }
 </style>
 <script>
+  function showAvatarLoading(form) {
+    const label = form.querySelector("[data-avatar-label]");
+    const loading = form.querySelector("[data-avatar-loading]");
+    const status = form.querySelector("[data-avatar-status]");
+
+    if (label) {
+      label.classList.add("pointer-events-none", "opacity-80");
+      label.setAttribute("aria-busy", "true");
+    }
+    if (loading) {
+      loading.classList.remove("hidden");
+      loading.classList.add("grid");
+      loading.setAttribute("aria-hidden", "false");
+    }
+    if (status) status.textContent = "Uploading profile picture";
+  }
+
+  document.querySelectorAll("[data-avatar-form]").forEach((form) => {
+    form.addEventListener("submit", () => showAvatarLoading(form));
+  });
+
   document.querySelectorAll("[data-avatar-input]").forEach((input) => {
     input.addEventListener("change", () => {
-      if (input.files && input.files.length > 0) input.form.requestSubmit();
+      if (input.files && input.files.length > 0) {
+        showAvatarLoading(input.form);
+        input.form.requestSubmit();
+      }
     });
   });
   if (window.lucide) window.lucide.createIcons();
