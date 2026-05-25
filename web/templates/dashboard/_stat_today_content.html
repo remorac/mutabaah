@@ -1,0 +1,17 @@
+{{define "_stat_today_content.html"}}
+<div id="stat-today-content" data-swap-target="#stat-today-content" class="card-body p-4">
+  <div class="flex items-center justify-between">
+    <div class="text-xs font-semibold uppercase tracking-wide opacity-50">Today</div>
+    <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary grid place-items-center">
+      <i data-lucide="calendar-check" class="w-4 h-4"></i>
+    </div>
+  </div>
+  <div class="mt-2">
+    <div class="text-2xl font-bold leading-none">{{.Stats.TodayPct}}%</div>
+    <div class="text-xs opacity-60 mt-1">{{.Stats.TodayDone}}/{{.Stats.TodayTotal}} completed</div>
+  </div>
+  <div class="mt-2 h-1.5 rounded-full bg-base-200 overflow-hidden">
+    <div class="h-full rounded-full bg-primary transition-all duration-500" style="width: {{.Stats.TodayPct}}%"></div>
+  </div>
+</div>
+{{end}}

@@ -160,11 +160,14 @@ func (h *DashboardHandler) ToggleComplete(w http.ResponseWriter, r *http.Request
 
 func (h *DashboardHandler) renderToggleFragments(w http.ResponseWriter, inner dashboardInnerView, taskID int64, dueDate, today time.Time) error {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.tmpl.RenderPartial(w, "dashboard/_dashboard_stats.html", inner); err != nil {
+	if err := h.renderStatFragments(w, inner); err != nil {
 		return err
 	}
 	if dateOnly(dueDate).Equal(dateOnly(today)) {
-		return h.tmpl.RenderPartial(w, "dashboard/_dashboard_today_cards.html", inner)
+		if err := h.tmpl.RenderPartial(w, "dashboard/_today_pending_content.html", inner); err != nil {
+			return err
+		}
+		return h.tmpl.RenderPartial(w, "dashboard/_today_done_content.html", inner)
 	}
 
 	rowID := taskRowID(taskID, dueDate)
@@ -177,6 +180,20 @@ func (h *DashboardHandler) renderToggleFragments(w http.ResponseWriter, inner da
 	}
 	_, err := fmt.Fprintf(w, `<li id="%s" data-swap-target="#%s" hidden></li>`, rowID, rowID)
 	return err
+}
+
+func (h *DashboardHandler) renderStatFragments(w http.ResponseWriter, inner dashboardInnerView) error {
+	for _, name := range []string{
+		"dashboard/_stat_today_content.html",
+		"dashboard/_stat_pending_content.html",
+		"dashboard/_stat_week_content.html",
+		"dashboard/_stat_streak_content.html",
+	} {
+		if err := h.tmpl.RenderPartial(w, name, inner); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csrfToken string) (dashboardInnerView, error) {

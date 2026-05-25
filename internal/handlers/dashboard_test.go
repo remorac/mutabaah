@@ -151,10 +151,19 @@ func TestRenderToggleFragmentsForToday(t *testing.T) {
 	}
 
 	body := rec.Body.String()
-	if strings.Contains(body, `id="dashboard-inner"`) {
-		t.Fatalf("today fragment response included dashboard-inner: %s", body)
+	for _, unwanted := range []string{`id="dashboard-inner"`, `data-swap-target="#dashboard-stats"`, `data-swap-target="#dashboard-today-cards"`} {
+		if strings.Contains(body, unwanted) {
+			t.Fatalf("today fragment response included %s: %s", unwanted, body)
+		}
 	}
-	for _, want := range []string{`data-swap-target="#dashboard-stats"`, `data-swap-target="#dashboard-today-cards"`} {
+	for _, want := range []string{
+		`data-swap-target="#stat-today-content"`,
+		`data-swap-target="#stat-pending-content"`,
+		`data-swap-target="#stat-week-content"`,
+		`data-swap-target="#stat-streak-content"`,
+		`data-swap-target="#today-pending-content"`,
+		`data-swap-target="#today-done-content"`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("today fragment response missing %s: %s", want, body)
 		}
@@ -193,10 +202,18 @@ func TestRenderToggleFragmentsForMissed(t *testing.T) {
 	}
 
 	body := rec.Body.String()
-	if strings.Contains(body, `id="dashboard-inner"`) || strings.Contains(body, `id="dashboard-today-cards"`) {
-		t.Fatalf("missed fragment response included broader dashboard fragments: %s", body)
+	for _, unwanted := range []string{`id="dashboard-inner"`, `data-swap-target="#dashboard-stats"`, `data-swap-target="#dashboard-today-cards"`, `data-swap-target="#today-pending-content"`, `data-swap-target="#today-done-content"`} {
+		if strings.Contains(body, unwanted) {
+			t.Fatalf("missed fragment response included %s: %s", unwanted, body)
+		}
 	}
-	for _, want := range []string{`data-swap-target="#dashboard-stats"`, `data-swap-target="#task-row-2-2026-05-24"`} {
+	for _, want := range []string{
+		`data-swap-target="#stat-today-content"`,
+		`data-swap-target="#stat-pending-content"`,
+		`data-swap-target="#stat-week-content"`,
+		`data-swap-target="#stat-streak-content"`,
+		`data-swap-target="#task-row-2-2026-05-24"`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missed fragment response missing %s: %s", want, body)
 		}
