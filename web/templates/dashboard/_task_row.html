@@ -1,5 +1,7 @@
 {{define "_task_row.html"}}
 <li
+  id="{{.RowID}}"
+  data-swap-target="#{{.RowID}}"
   class="group flex items-center justify-between gap-3 py-2.5 border-b border-base-200 last:border-b-0 transition-all duration-150 hover:translate-y-[-1px]">
   <div class="flex items-center gap-3 min-w-0">
     {{if eq .Status "completed"}}
@@ -25,17 +27,20 @@
       </div>
     </div>
   </div>
-  <form class="shrink-0" hx-post="/tasks/{{.TaskID}}/complete?date={{.DueDate}}" hx-target="#dashboard-inner"
-    hx-swap="outerHTML swap:150ms" hx-headers='{"X-CSRF-Token": "{{.CSRFToken}}"}'>
+  <div class="shrink-0">
     {{if eq .Status "completed"}}
-    <button type="submit" class="btn btn-sm btn-ghost w-12 opacity-60 hover:opacity-100 transition-opacity">
+    <button type="button" class="btn btn-sm btn-ghost w-12 opacity-60 hover:opacity-100 transition-opacity"
+      data-dashboard-toggle data-url="/tasks/{{.TaskID}}/complete?date={{.DueDate}}" data-csrf="{{.CSRFToken}}"
+      data-task-date="{{.DueDate}}" data-task-section="{{.Section}}">
       <i data-lucide="undo-2" class="w-4 h-4"></i>
     </button>
     {{else}}
-    <button type="submit" class="btn btn-sm btn-primary w-12 shadow-sm hover:shadow-md transition-shadow">
+    <button type="button" class="btn btn-sm btn-primary w-12 shadow-sm hover:shadow-md transition-shadow"
+      data-dashboard-toggle data-url="/tasks/{{.TaskID}}/complete?date={{.DueDate}}" data-csrf="{{.CSRFToken}}"
+      data-task-date="{{.DueDate}}" data-task-section="{{.Section}}">
       <i data-lucide="check" class="w-4 h-4"></i>
     </button>
     {{end}}
-  </form>
+  </div>
 </li>
 {{end}}

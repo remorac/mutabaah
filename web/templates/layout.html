@@ -85,7 +85,7 @@
       stroke-width: 2.4;
     }
 
-    /* HTMX transitions */
+    /* Partial-swap transitions */
     .htmx-swapping {
       opacity: 0;
       transform: translateY(-4px);
@@ -103,13 +103,21 @@
       transition: opacity 200ms ease, transform 200ms ease;
     }
 
+    .ajax-swapping {
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+
     /* Button loading states */
-    .btn.htmx-request {
+    .btn.htmx-request,
+    .btn.is-loading {
       position: relative;
       color: transparent !important;
     }
 
-    .btn.htmx-request::after {
+    .btn.htmx-request::after,
+    .btn.is-loading::after {
       content: "";
       position: absolute;
       inset: 0;
@@ -325,6 +333,44 @@
         const nextTheme = document.documentElement.getAttribute("data-theme") === "fantasy" ? "dim" : "fantasy";
         setTheme(nextTheme);
       });
+    });
+
+    document.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-dashboard-toggle]");
+      if (!button || button.disabled) return;
+      button.disabled = true;
+      button.classList.add("is-loading");
+
+      try {
+        const response = await fetch(button.dataset.url, {
+          method: "POST",
+          headers: {
+            "X-CSRF-Token": button.dataset.csrf || "",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+
+        if (!response.ok) throw new Error("Task update failed");
+
+        const html = await response.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const fragments = Array.from(doc.body.children).filter((node) => node.matches("[data-swap-target]"));
+
+        fragments.forEach((fragment) => {
+          const target = document.querySelector(fragment.dataset.swapTarget);
+          if (!target) return;
+          const replacement = document.importNode(fragment, true);
+          target.classList.add("ajax-swapping");
+          window.setTimeout(() => {
+            target.replaceWith(replacement);
+            if (window.lucide) window.lucide.createIcons();
+          }, 150);
+        });
+      } catch (error) {
+        button.disabled = false;
+        button.classList.remove("is-loading");
+        console.error(error);
+      }
     });
 
     if (window.lucide) window.lucide.createIcons();

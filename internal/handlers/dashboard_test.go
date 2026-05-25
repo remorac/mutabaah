@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -118,6 +120,85 @@ func TestSortMissedGroupsByDateDesc(t *testing.T) {
 	for i, group := range groups {
 		if group.Date != want[i] {
 			t.Fatalf("groups[%d].Date = %s, want %s", i, group.Date, want[i])
+		}
+	}
+}
+
+func TestRenderToggleFragmentsForToday(t *testing.T) {
+	tmpl, err := LoadTemplates("../../web/templates")
+	if err != nil {
+		t.Fatalf("LoadTemplates() error = %v", err)
+	}
+	handler := &DashboardHandler{tmpl: tmpl}
+	today := dashboardDate(2026, 5, 25)
+	inner := dashboardInnerView{
+		Today: "Mon, 25 May 2026",
+		TodayPending: []taskRowView{{
+			TaskID:    1,
+			Title:     "Read",
+			Frequency: "daily",
+			DueDate:   "2026-05-25",
+			Status:    "pending",
+			Section:   "today",
+			RowID:     "task-row-1-2026-05-25",
+		}},
+		Stats: dashboardStatsView{TodayTotal: 1, PendingCount: 1, WeeklyTotal: 1},
+	}
+	rec := httptest.NewRecorder()
+
+	if err := handler.renderToggleFragments(rec, inner, 1, today, today); err != nil {
+		t.Fatalf("renderToggleFragments() error = %v", err)
+	}
+
+	body := rec.Body.String()
+	if strings.Contains(body, `id="dashboard-inner"`) {
+		t.Fatalf("today fragment response included dashboard-inner: %s", body)
+	}
+	for _, want := range []string{`data-swap-target="#dashboard-stats"`, `data-swap-target="#dashboard-today-cards"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("today fragment response missing %s: %s", want, body)
+		}
+	}
+}
+
+func TestRenderToggleFragmentsForMissed(t *testing.T) {
+	tmpl, err := LoadTemplates("../../web/templates")
+	if err != nil {
+		t.Fatalf("LoadTemplates() error = %v", err)
+	}
+	handler := &DashboardHandler{tmpl: tmpl}
+	today := dashboardDate(2026, 5, 25)
+	missedDate := dashboardDate(2026, 5, 24)
+	inner := dashboardInnerView{
+		Today: "Mon, 25 May 2026",
+		Missed: []missedGroupView{{
+			Date:      "2026-05-24",
+			DateLabel: "Sun, 24 May 2026",
+			Rows: []taskRowView{{
+				TaskID:    2,
+				Title:     "Review",
+				Frequency: "daily",
+				DueDate:   "2026-05-24",
+				Status:    "missed",
+				Section:   "missed",
+				RowID:     "task-row-2-2026-05-24",
+			}},
+		}},
+		Stats: dashboardStatsView{TodayTotal: 1, PendingCount: 1, WeeklyTotal: 2},
+	}
+	rec := httptest.NewRecorder()
+
+	if err := handler.renderToggleFragments(rec, inner, 2, missedDate, today); err != nil {
+		t.Fatalf("renderToggleFragments() error = %v", err)
+	}
+
+	body := rec.Body.String()
+	if strings.Contains(body, `id="dashboard-inner"`) || strings.Contains(body, `id="dashboard-today-cards"`) {
+		t.Fatalf("missed fragment response included broader dashboard fragments: %s", body)
+	}
+	for _, want := range []string{`data-swap-target="#dashboard-stats"`, `data-swap-target="#task-row-2-2026-05-24"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missed fragment response missing %s: %s", want, body)
 		}
 	}
 }

@@ -28,7 +28,7 @@
           {{range .Grid.Weeks}}{{range .}}
             <button
               type="button"
-              class="aspect-square rounded-lg border border-base-200 p-1.5 text-left transition-all duration-150 hover:border-primary hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-base-100 {{if not .InMonth}}opacity-40{{end}} {{if .IsToday}}ring-2 ring-primary ring-offset-1 ring-offset-base-100 font-bold{{end}} {{if eq .Date $.Grid.Selected}}bg-primary/10 border-primary{{end}} {{.IntensityCls}}"
+              class="aspect-square rounded-sm border border-base-200 p-1.5 text-left transition-all duration-150 hover:border-primary hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-base-100 {{if not .InMonth}}opacity-40{{end}} {{if .IsToday}}ring-2 ring-primary ring-offset-1 ring-offset-base-100 font-bold{{end}} {{if eq .Date $.Grid.Selected}}bg-primary/10 border-primary{{end}} {{.IntensityCls}}"
               hx-get="/calendar/day?date={{.Date}}"
               hx-target="#calendar-day-panel"
               hx-swap="innerHTML swap:150ms"

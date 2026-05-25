@@ -84,7 +84,8 @@ func isPartialRequest(r *http.Request) bool {
 	if r.Header.Get("HX-Request") != "" {
 		return true
 	}
-	if strings.EqualFold(r.Header.Get("X-Requested-With"), "XMLHttpRequest") {
+	requestedWith := r.Header.Get("X-Requested-With")
+	if strings.EqualFold(requestedWith, "XMLHttpRequest") || strings.EqualFold(requestedWith, "fetch") {
 		return true
 	}
 	return false

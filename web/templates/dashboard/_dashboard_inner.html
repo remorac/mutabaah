@@ -1,74 +1,7 @@
 {{define "_dashboard_inner.html"}}
 <div id="dashboard-inner" class="flex flex-col gap-6">
 
-  <!-- Stats cards -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-4">
-        <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-wide opacity-50">Today</div>
-          <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary grid place-items-center">
-            <i data-lucide="calendar-check" class="w-4 h-4"></i>
-          </div>
-        </div>
-        <div class="mt-2">
-          <div class="text-2xl font-bold leading-none">{{.Stats.TodayPct}}%</div>
-          <div class="text-xs opacity-60 mt-1">{{.Stats.TodayDone}}/{{.Stats.TodayTotal}} completed</div>
-        </div>
-        <div class="mt-2 h-1.5 rounded-full bg-base-200 overflow-hidden">
-          <div class="h-full rounded-full bg-primary transition-all duration-500" style="width: {{.Stats.TodayPct}}%"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-4">
-        <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-wide opacity-50">Pending</div>
-          <div class="w-8 h-8 rounded-lg bg-warning/10 text-warning grid place-items-center">
-            <i data-lucide="clock" class="w-4 h-4"></i>
-          </div>
-        </div>
-        <div class="mt-2">
-          <div class="text-2xl font-bold leading-none">{{.Stats.PendingCount}}</div>
-          <div class="text-xs opacity-60 mt-1">tasks remaining</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-4">
-        <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-wide opacity-50">This Week</div>
-          <div class="w-8 h-8 rounded-lg bg-success/10 text-success grid place-items-center">
-            <i data-lucide="trending-up" class="w-4 h-4"></i>
-          </div>
-        </div>
-        <div class="mt-2">
-          <div class="text-2xl font-bold leading-none">{{.Stats.WeeklyPct}}%</div>
-          <div class="text-xs opacity-60 mt-1">{{.Stats.WeeklyDone}}/{{.Stats.WeeklyTotal}} completed</div>
-        </div>
-        <div class="mt-2 h-1.5 rounded-full bg-base-200 overflow-hidden">
-          <div class="h-full rounded-full bg-success transition-all duration-500" style="width: {{.Stats.WeeklyPct}}%"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-4">
-        <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-wide opacity-50">Streak</div>
-          <div class="w-8 h-8 rounded-lg bg-accent/10 text-accent grid place-items-center">
-            <i data-lucide="flame" class="w-4 h-4"></i>
-          </div>
-        </div>
-        <div class="mt-2">
-          <div class="text-2xl font-bold leading-none">{{.Stats.Streak}}</div>
-          <div class="text-xs opacity-60 mt-1">day{{if ne .Stats.Streak 1}}s{{end}} on track</div>
-        </div>
-      </div>
-    </div>
-  </div>
+  {{template "_dashboard_stats.html" .}}
 
   <section>
     <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -88,51 +21,7 @@
       </div>
     </div>
     {{else}}
-    <div class="grid md:grid-cols-2 gap-4">
-
-      <div class="card bg-base-100 shadow-sm border border-base-200">
-        <div class="card-body">
-          <h3 class="card-title text-sm uppercase tracking-wide opacity-70 font-semibold">
-            Uncompleted
-            <span class="badge badge-ghost badge-sm">{{len .TodayPending}}</span>
-          </h3>
-          {{if .TodayPending}}
-            <ul class="flex flex-col mt-2">
-              {{range .TodayPending}}{{template "_task_row.html" .}}{{end}}
-            </ul>
-          {{else}}
-            <div class="flex flex-col items-center text-center py-6">
-              <div class="w-12 h-12 rounded-xl bg-success/10 text-success grid place-items-center mb-2">
-                <i data-lucide="check-circle-2" class="w-6 h-6"></i>
-              </div>
-              <p class="text-sm font-medium text-success">All done. Alhamdulillah.</p>
-            </div>
-          {{end}}
-        </div>
-      </div>
-
-      <div class="card bg-base-100 shadow-sm border border-base-200">
-        <div class="card-body">
-          <h3 class="card-title text-sm uppercase tracking-wide opacity-70 font-semibold">
-            Completed
-            <span class="badge badge-success badge-sm">{{len .TodayDone}}</span>
-          </h3>
-          {{if .TodayDone}}
-            <ul class="flex flex-col mt-2">
-              {{range .TodayDone}}{{template "_task_row.html" .}}{{end}}
-            </ul>
-          {{else}}
-            <div class="flex flex-col items-center text-center py-6">
-              <div class="w-12 h-12 rounded-xl bg-base-200 grid place-items-center mb-2">
-                <i data-lucide="circle-dashed" class="w-6 h-6 opacity-40"></i>
-              </div>
-              <p class="text-sm opacity-60">Nothing yet. Start with one task.</p>
-            </div>
-          {{end}}
-        </div>
-      </div>
-
-    </div>
+    {{template "_dashboard_today_cards.html" .}}
     {{end}}
   </section>
 

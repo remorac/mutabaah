@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -48,6 +49,8 @@ type taskRowView struct {
 	DueDate     string // YYYY-MM-DD, used in the form action URL
 	Status      string // "pending" | "missed" | "completed"
 	CSRFToken   string
+	Section     string // "today" | "missed"
+	RowID       string
 }
 
 type missedGroupView struct {
@@ -106,8 +109,9 @@ func (h *DashboardHandler) Home(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ToggleComplete flips the completion state for a single (task, date) and
-// returns the refreshed dashboard inner block as an HTMX partial.
+// ToggleComplete flips the completion state for a single (task, date).
+// AJAX/HTMX requests receive the refreshed dashboard inner block; regular
+// form posts redirect back to the dashboard.
 func (h *DashboardHandler) ToggleComplete(w http.ResponseWriter, r *http.Request) {
 	user, _ := apmw.UserFromContext(r.Context())
 	sid := apmw.SessionIDFromContext(r.Context())
@@ -139,14 +143,40 @@ func (h *DashboardHandler) ToggleComplete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if !isPartialRequest(r) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
 	inner, err := h.buildInner(r, user, token)
 	if err != nil {
 		h.errs.ServerError(w, r, err)
 		return
 	}
-	if err := h.tmpl.RenderPartial(w, "dashboard/_dashboard_inner.html", inner); err != nil {
+	if err := h.renderToggleFragments(w, inner, taskID, dueDate, today); err != nil {
 		h.errs.ServerError(w, r, err)
 	}
+}
+
+func (h *DashboardHandler) renderToggleFragments(w http.ResponseWriter, inner dashboardInnerView, taskID int64, dueDate, today time.Time) error {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := h.tmpl.RenderPartial(w, "dashboard/_dashboard_stats.html", inner); err != nil {
+		return err
+	}
+	if dateOnly(dueDate).Equal(dateOnly(today)) {
+		return h.tmpl.RenderPartial(w, "dashboard/_dashboard_today_cards.html", inner)
+	}
+
+	rowID := taskRowID(taskID, dueDate)
+	for _, group := range inner.Missed {
+		for _, row := range group.Rows {
+			if row.TaskID == taskID && row.DueDate == dueDate.Format("2006-01-02") {
+				return h.tmpl.RenderPartial(w, "dashboard/_task_row.html", row)
+			}
+		}
+	}
+	_, err := fmt.Fprintf(w, `<li id="%s" data-swap-target="#%s" hidden></li>`, rowID, rowID)
+	return err
 }
 
 func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csrfToken string) (dashboardInnerView, error) {
@@ -167,7 +197,7 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 		Today: today.Format("Mon, 02 Jan 2006"),
 	}
 	for _, occ := range todayOccs {
-		row := rowFromOccurrence(occ, csrfToken)
+		row := rowFromOccurrence(occ, csrfToken, "today")
 		if row.Status == "completed" {
 			view.TodayDone = append(view.TodayDone, row)
 		} else {
@@ -189,7 +219,7 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 			idx = len(view.Missed) - 1
 			groupIdx[key] = idx
 		}
-		view.Missed[idx].Rows = append(view.Missed[idx].Rows, rowFromOccurrence(occ, csrfToken))
+		view.Missed[idx].Rows = append(view.Missed[idx].Rows, rowFromOccurrence(occ, csrfToken, "missed"))
 	}
 	sortMissedGroupsByDateDesc(view.Missed)
 
@@ -287,7 +317,7 @@ func showInMissedSection(occ services.TaskOccurrence) bool {
 	return completedDate.After(dateOnly(occ.DueDate))
 }
 
-func rowFromOccurrence(occ services.TaskOccurrence, csrfToken string) taskRowView {
+func rowFromOccurrence(occ services.TaskOccurrence, csrfToken, section string) taskRowView {
 	var desc string
 	if occ.Task.Description.Valid {
 		desc = occ.Task.Description.String
@@ -300,7 +330,13 @@ func rowFromOccurrence(occ services.TaskOccurrence, csrfToken string) taskRowVie
 		DueDate:     occ.DueDate.Format("2006-01-02"),
 		Status:      string(occ.Status),
 		CSRFToken:   csrfToken,
+		Section:     section,
+		RowID:       taskRowID(occ.Task.ID, occ.DueDate),
 	}
+}
+
+func taskRowID(taskID int64, dueDate time.Time) string {
+	return fmt.Sprintf("task-row-%d-%s", taskID, dateOnly(dueDate).Format("2006-01-02"))
 }
 
 func dateOnly(t time.Time) time.Time {

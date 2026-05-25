@@ -36,12 +36,20 @@
         {{with index .Errors "title"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
       </label>
 
-      <div class="grid md:grid-cols-2 gap-4">
-        <label class="block">
+      <label class="block">
           <span class="label-text font-medium block mb-2">Description</span>
           <input type="text" name="description" maxlength="64" value="{{.Description}}" placeholder="e.g. fard, sunnah, quran"
             class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "description"}}input-error{{end}}" />
           {{with index .Errors "description"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+        </label>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="label-text font-medium block mb-2">Sequence <span
+              class="font-normal opacity-60">(lower numbers appear first)</span></span>
+          <input type="number" name="sequence" step="1" value="{{.Sequence}}"
+            class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "sequence"}}input-error{{end}}" />
+          {{with index .Errors "sequence"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
         </label>
 
         <label class="block">
@@ -74,15 +82,7 @@
         </label>
       </div>
 
-      <label class="block">
-        <span class="label-text font-medium block mb-2">Sequence <span
-            class="font-normal opacity-60">(lower numbers appear first)</span></span>
-        <input type="number" name="sequence" step="1" value="{{.Sequence}}"
-          class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "sequence"}}input-error{{end}}" />
-        {{with index .Errors "sequence"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
-      </label>
-
-      <label class="flex items-center gap-3 rounded-xl border border-base-300 bg-base-200/30 px-4 py-3 cursor-pointer transition-colors hover:bg-base-200/50">
+      <label class="flex items-center gap-3 rounded-sm border border-base-300 bg-base-200/30 px-4 py-3 cursor-pointer transition-colors hover:bg-base-200/50">
         <input type="checkbox" name="active" class="toggle toggle-primary" {{if .Active}}checked{{end}} />
         <span class="label-text font-medium">Active</span>
       </label>
