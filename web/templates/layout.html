@@ -22,10 +22,12 @@
         var(--color-base-100);
     }
 
-    .sidebar-nav a {
+    .sidebar-nav.menu li > a[data-nav-link] {
+      display: flex;
       align-items: center;
+      gap: 0.75rem;
       min-height: 2.75rem;
-      padding-block: 0.625rem;
+      padding: 0.625rem 0.75rem;
       border-radius: 0.75rem;
       color: color-mix(in oklab, var(--color-base-content) 78%, transparent);
       font-weight: 600;
@@ -33,22 +35,23 @@
       transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
     }
 
-    .sidebar-nav a i {
-      align-self: center;
+    .sidebar-nav.menu li > a[data-nav-link] svg {
+      display: block;
+      flex: 0 0 auto;
     }
 
-    .sidebar-nav a:hover {
+    .sidebar-nav.menu li > a[data-nav-link]:hover {
       background: color-mix(in oklab, var(--color-primary) 10%, var(--color-base-100));
       color: var(--color-base-content);
       transform: translateX(2px);
     }
 
-    .sidebar-nav a.active {
+    .sidebar-nav.menu li > a[data-nav-link].active {
       background: color-mix(in oklab, var(--color-primary) 16%, var(--color-base-100));
       color: var(--color-primary);
     }
 
-    .sidebar-nav a.active i {
+    .sidebar-nav.menu li > a[data-nav-link].active svg {
       stroke-width: 2.4;
     }
   </style>
