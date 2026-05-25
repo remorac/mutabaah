@@ -1,0 +1,38 @@
+{{define "_task_row.html"}}
+<li class="flex items-center justify-between gap-3 py-2 border-b border-base-200 last:border-b-0">
+  <div class="flex items-center gap-3 min-w-0">
+    {{if eq .Status "completed"}}
+      <i data-lucide="check-circle" class="w-5 h-5 text-success shrink-0"></i>
+    {{else if eq .Status "missed"}}
+      <i data-lucide="x-circle" class="w-5 h-5 text-error shrink-0"></i>
+    {{else}}
+      <i data-lucide="circle" class="w-5 h-5 opacity-50 shrink-0"></i>
+    {{end}}
+    <div class="min-w-0">
+      <div class="font-medium truncate">{{.Title}}</div>
+      <div class="text-xs opacity-60 flex flex-wrap gap-2 items-center">
+        <span>{{.DueDateLabel}}</span>
+        {{if .Category}}<span class="badge badge-ghost badge-sm">{{.Category}}</span>{{end}}
+        <span class="badge badge-outline badge-sm">{{.Frequency}}</span>
+      </div>
+    </div>
+  </div>
+  <form
+    hx-post="/tasks/{{.TaskID}}/complete?date={{.DueDate}}"
+    hx-target="#dashboard-inner"
+    hx-swap="outerHTML"
+    hx-headers='{"X-CSRF-Token": "{{.CSRFToken}}"}'>
+    {{if eq .Status "completed"}}
+      <button type="submit" class="btn btn-sm btn-ghost">
+        <i data-lucide="undo-2" class="w-4 h-4"></i>
+        Undo
+      </button>
+    {{else}}
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i data-lucide="check" class="w-4 h-4"></i>
+        Mark done
+      </button>
+    {{end}}
+  </form>
+</li>
+{{end}}

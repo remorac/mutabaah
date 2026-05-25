@@ -1,0 +1,79 @@
+{{define "_dashboard_inner.html"}}
+<div id="dashboard-inner" class="flex flex-col gap-6">
+
+  <section>
+    <h2 class="text-xl font-semibold mb-3 flex items-center gap-2">
+      <i data-lucide="calendar-check" class="w-5 h-5"></i>
+      Today
+      <span class="text-sm font-normal opacity-60">— {{.Today}}</span>
+    </h2>
+
+    {{if and (not .TodayPending) (not .TodayDone)}}
+    <div class="alert">
+      <i data-lucide="info" class="w-4 h-4"></i>
+      <span>No tasks scheduled for today.</span>
+    </div>
+    {{else}}
+    <div class="grid md:grid-cols-2 gap-4">
+
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+          <h3 class="card-title text-base">
+            Uncompleted
+            <span class="badge badge-ghost">{{len .TodayPending}}</span>
+          </h3>
+          {{if .TodayPending}}
+            <ul class="flex flex-col">
+              {{range .TodayPending}}{{template "_task_row.html" .}}{{end}}
+            </ul>
+          {{else}}
+            <p class="opacity-60 text-sm">All done. Alhamdulillah.</p>
+          {{end}}
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+          <h3 class="card-title text-base">
+            Completed
+            <span class="badge badge-success">{{len .TodayDone}}</span>
+          </h3>
+          {{if .TodayDone}}
+            <ul class="flex flex-col">
+              {{range .TodayDone}}{{template "_task_row.html" .}}{{end}}
+            </ul>
+          {{else}}
+            <p class="opacity-60 text-sm">Nothing yet.</p>
+          {{end}}
+        </div>
+      </div>
+
+    </div>
+    {{end}}
+  </section>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-3 flex items-center gap-2">
+      <i data-lucide="alert-circle" class="w-5 h-5 text-error"></i>
+      Missed
+      <span class="text-sm font-normal opacity-60">— last 30 days</span>
+    </h2>
+    {{if .Missed}}
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <ul class="flex flex-col">
+          {{range .Missed}}{{template "_task_row.html" .}}{{end}}
+        </ul>
+      </div>
+    </div>
+    {{else}}
+    <div class="alert alert-success">
+      <i data-lucide="check-circle" class="w-4 h-4"></i>
+      <span>No missed tasks in the last 30 days.</span>
+    </div>
+    {{end}}
+  </section>
+
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}

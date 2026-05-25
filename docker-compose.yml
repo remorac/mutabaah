@@ -1,0 +1,48 @@
+# Local dev stack: MySQL 8 + the Go app. Run with:
+#   docker compose up --build
+# then visit http://localhost:8080.
+#
+# On first boot, run the migrations from your host (the app does not auto-migrate):
+#   make migrate-up
+# and seed an admin user:
+#   docker compose exec app /app/seed -email you@example.com -password 'changeme-admin-12345'
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpw
+      MYSQL_DATABASE: tracker
+      MYSQL_USER: tracker
+      MYSQL_PASSWORD: tracker
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - tracker_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-prootpw"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      APP_DATABASE_DSN: "tracker:tracker@tcp(db:3306)/tracker?parseTime=true&multiStatements=true"
+      SESSION_SECRET: "${SESSION_SECRET:-dev-secret-please-change-me-32+chars}"
+      SESSION_LIFETIME_HOURS: "336"
+      SECURE_COOKIES: "false"
+    ports:
+      - "8080:8080"
+
+volumes:
+  tracker_mysql_data:

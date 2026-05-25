@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="max-w-md mx-auto mt-8">
+  <div class="card bg-base-100 shadow-md rounded-lg">
+    <div class="card-body gap-5">
+      <h1 class="card-title">
+        <i data-lucide="lock" class="w-5 h-5"></i>
+        Sign in
+      </h1>
+
+      {{if .Error}}
+      <div role="alert" class="alert alert-error">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <span>{{.Error}}</span>
+      </div>
+      {{end}}
+
+      <form method="POST" action="/login" class="flex flex-col gap-4 mt-1">
+        <label class="block">
+          <span class="label-text font-medium block mb-3">Email</span>
+          <input type="email" name="email" required autofocus value="{{.Email}}"
+                 class="input input-bordered w-full" />
+        </label>
+        <label class="block">
+          <span class="label-text font-medium block mb-3">Password</span>
+          <input type="password" name="password" required
+                 class="input input-bordered w-full" />
+        </label>
+        <button type="submit" class="btn btn-primary mt-1 w-full">Sign in</button>
+      </form>
+    </div>
+  </div>
+</div>
+{{end}}

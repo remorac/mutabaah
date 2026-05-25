@@ -1,0 +1,95 @@
+{{define "content"}}
+<div class="flex flex-col gap-6">
+
+  <div class="flex items-center justify-between gap-3">
+    <h1 class="text-2xl font-semibold flex items-center gap-2">
+      <i data-lucide="users" class="w-6 h-6"></i>
+      Users
+      <span class="badge badge-ghost badge-sm">{{.Total}}</span>
+    </h1>
+    <a href="/settings/users/new" class="btn btn-primary btn-sm">
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      New user
+    </a>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body p-0">
+      {{if .Rows}}
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Rows}}
+            <tr>
+              <td class="font-medium">
+                {{.Name}}
+                {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1">you</span>{{end}}
+              </td>
+              <td>{{.Email}}</td>
+              <td>
+                {{if eq .Role "admin"}}
+                  <span class="badge badge-primary badge-sm">admin</span>
+                {{else}}
+                  <span class="badge badge-ghost badge-sm">user</span>
+                {{end}}
+              </td>
+              <td class="text-xs opacity-70">{{.CreatedAt}}</td>
+              <td class="text-right">
+                <a href="/settings/users/{{.ID}}/edit" class="btn btn-ghost btn-xs">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                  Edit
+                </a>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <div class="p-6 text-center opacity-60">No users yet.</div>
+      {{end}}
+    </div>
+  </div>
+
+  {{if gt .TotalPages 1}}
+  <div class="flex items-center justify-between text-sm">
+    <span class="opacity-70">Page {{.Page}} of {{.TotalPages}}</span>
+    <div class="join">
+      {{if .HasPrev}}
+      <a href="{{.PrevURL}}" class="join-item btn btn-sm">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        Prev
+      </a>
+      {{else}}
+      <button class="join-item btn btn-sm btn-disabled" disabled>
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        Prev
+      </button>
+      {{end}}
+      {{if .HasNext}}
+      <a href="{{.NextURL}}" class="join-item btn btn-sm">
+        Next
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </a>
+      {{else}}
+      <button class="join-item btn btn-sm btn-disabled" disabled>
+        Next
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}

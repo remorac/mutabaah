@@ -1,0 +1,53 @@
+Mutaba'ah Tracker
+A task tracker for Islamic practices.
+
+Features:
+- Daily tarbiyah tasks (fard, sunnah, Quran, dhikr, etc.)
+- Weekly tasks
+- Monthly tasks
+- Yearly tasks
+- Can repeat after a specific period (daily, weekly, monthly, yearly)
+- Calendar view to see past and future tasks
+
+System:
+- multi user (admin role and user role)
+- admin can manage users
+- admin can create, update, delete, and view tasks
+- auth by email and password (need to implement secure login)
+
+Menu:
+- Dashboard
+    - Today's Tasks
+        - Completed Tasks (with checkmark icon)
+        - Uncompleted Tasks (with cross icon)
+    - Missed Tasks (with cross icon)
+- Calendar
+- Settings
+    - Tasks
+        - Create Task
+        - Update Task
+        - Delete Task
+        - View Tasks
+    - Users
+        - Create User
+        - Update User
+        - Delete User
+        - View Users
+
+
+Tech Stack:
+- Golang Monolith
+- Chi Router
+- Go Html Template
+- MySQL
+- SQLC
+- Daisy UI 5 (from CDN)
+- Tailwind CSS 4 (from CDN)
+- Lucide Icons (from CDN)
+- Alpine JS (from CDN)
+- HTMX (from CDN)
+
+UI Guidelines:
+- Avoid using custom css class if there's built in css class available from daisy ui or tailwind.
+- Prioritize using css class from daisy UI, then tailwind, then custom css.
+- use default color scheme from selected daisy ui theme 

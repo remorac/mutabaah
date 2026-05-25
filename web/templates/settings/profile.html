@@ -1,0 +1,61 @@
+{{define "content"}}
+<div class="max-w-xl flex flex-col gap-5">
+
+  <div class="flex items-center justify-between gap-3">
+    <h1 class="text-2xl font-semibold flex items-center gap-2">
+      <i data-lucide="user-cog" class="w-6 h-6"></i>
+      Profile
+    </h1>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm rounded-lg">
+    <div class="card-body">
+      <div class="text-sm opacity-70 mb-2">Signed in as</div>
+      <div class="text-base font-medium">{{.UserName}}</div>
+      <div class="text-sm opacity-70">{{.Email}}</div>
+    </div>
+  </div>
+
+  {{if .Errors}}
+  <div role="alert" class="alert alert-error">
+    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+    <span>Please fix the errors below.</span>
+  </div>
+  {{end}}
+
+  <form method="POST" action="/settings/profile" class="card bg-base-100 shadow-sm rounded-lg">
+    <div class="card-body flex flex-col gap-5">
+      <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+
+      <h2 class="text-lg font-semibold">Change password</h2>
+      <p class="text-xs opacity-60 -mt-2">
+        On success you'll be signed out everywhere and need to log back in.
+      </p>
+
+      <label class="block">
+        <span class="label-text font-medium block mb-3">New password</span>
+        <input type="password" name="new_password" required minlength="12" autocomplete="new-password"
+          class="input input-bordered w-full {{if index .Errors " new_password"}}input-error{{end}}" />
+        {{with index .Errors "new_password"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+        <span class="text-xs opacity-60 mt-1">At least 12 characters.</span>
+      </label>
+
+      <label class="block">
+        <span class="label-text font-medium block mb-3">Confirm new password</span>
+        <input type="password" name="confirm_password" required minlength="12" autocomplete="new-password"
+          class="input input-bordered w-full {{if index .Errors " confirm_password"}}input-error{{end}}" />
+        {{with index .Errors "confirm_password"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+      </label>
+
+      <div class="card-actions justify-end pt-3 border-t border-base-200">
+        <button type="submit" class="btn btn-primary btn-sm w-full sm:w-auto">
+          <i data-lucide="key-round" class="w-4 h-4"></i>
+          Update password
+        </button>
+      </div>
+    </div>
+  </form>
+
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}

@@ -1,0 +1,126 @@
+{{define "content"}}
+<div class="max-w-2xl flex flex-col gap-5" x-data="{ confirmDelete: false }">
+
+  <div class="flex items-center justify-between gap-3">
+    <h1 class="text-2xl font-semibold flex items-center gap-2">
+      <i data-lucide="{{if .IsNew}}plus-circle{{else}}pencil{{end}}" class="w-6 h-6"></i>
+      {{if .IsNew}}New task{{else}}Edit task{{end}}
+    </h1>
+    <a href="/settings/tasks" class="btn btn-ghost btn-sm">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      Back
+    </a>
+  </div>
+
+  {{if .Errors}}
+  <div role="alert" class="alert alert-error">
+    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+    <span>Please fix the errors below.</span>
+  </div>
+  {{end}}
+
+  <form method="POST" action="{{.FormAction}}" class="card bg-base-100 shadow-sm rounded-lg">
+    <div class="card-body flex flex-col gap-5">
+      <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+
+      <label class="block">
+        <span class="label-text font-medium block mb-3">Title</span>
+        <input type="text" name="title" required maxlength="255" value="{{.Title}}"
+          class="input input-bordered w-full {{if index .Errors "title"}}input-error{{end}}" />
+        {{with index .Errors "title"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+      </label>
+
+      <label class="block">
+        <span class="label-text font-medium block mb-3">Description</span>
+        <textarea name="description" rows="4"
+          class="textarea textarea-bordered w-full resize-y">{{.Description}}</textarea>
+      </label>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="label-text font-medium block mb-3">Category</span>
+          <input type="text" name="category" maxlength="64" value="{{.Category}}" placeholder="e.g. fard, sunnah, quran"
+            class="input input-bordered w-full {{if index .Errors "category"}}input-error{{end}}" />
+          {{with index .Errors "category"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+        </label>
+
+        <label class="block">
+          <span class="label-text font-medium block mb-3">Frequency</span>
+          <select name="frequency" required
+            class="select select-bordered w-full {{if index .Errors "frequency"}}select-error{{end}}">
+            <option value="" {{if not .Frequency}}selected{{end}}>Choose…</option>
+            {{range .Frequencies}}
+            <option value="{{.}}" {{if eq . $.Frequency}}selected{{end}}>{{.}}</option>
+            {{end}}
+          </select>
+          {{with index .Errors "frequency"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+        </label>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="label-text font-medium block mb-3">Start date</span>
+          <input type="date" name="start_date" required value="{{.StartDate}}"
+            class="input input-bordered w-full {{if index .Errors "start_date"}}input-error{{end}}" />
+          {{with index .Errors "start_date"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+        </label>
+
+        <label class="block">
+          <span class="label-text font-medium block mb-3">End date <span
+              class="font-normal opacity-60">(optional)</span></span>
+          <input type="date" name="end_date" value="{{.EndDate}}"
+            class="input input-bordered w-full {{if index .Errors "end_date"}}input-error{{end}}" />
+          {{with index .Errors "end_date"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+        </label>
+      </div>
+
+      <label class="flex items-center gap-3 rounded-lg border border-base-300 bg-base-200/40 px-4 py-3 cursor-pointer">
+        <input type="checkbox" name="active" class="toggle toggle-primary" {{if .Active}}checked{{end}} />
+        <span class="label-text font-medium">Active</span>
+      </label>
+
+      <div class="card-actions flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-3 border-t border-base-200">
+        {{if not .IsNew}}
+        <button type="button" class="btn btn-error btn-outline btn-sm w-full sm:w-auto"
+          @click.prevent="confirmDelete = true">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+          Deactivate
+        </button>
+        {{else}}<span></span>{{end}}
+
+        <div class="flex flex-col-reverse sm:flex-row gap-2 w-full sm:w-auto">
+          <a href="/settings/tasks" class="btn btn-ghost btn-sm w-full sm:w-auto">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-sm w-full sm:w-auto">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            {{if .IsNew}}Create{{else}}Save{{end}}
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  {{if not .IsNew}}
+  <div x-show="confirmDelete" x-cloak class="modal modal-open">
+    <div class="modal-box">
+      <h3 class="font-semibold text-lg">Deactivate this task?</h3>
+      <p class="py-3 text-sm opacity-80">
+        The task will be hidden from users but its completion history is preserved.
+        You can re-activate it later by editing and toggling "Active" back on.
+      </p>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost btn-sm" @click="confirmDelete = false">Cancel</button>
+        <form method="POST" action="{{.DeleteURL}}">
+          <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+          <button type="submit" class="btn btn-error btn-sm">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            Deactivate
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {{end}}
+
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}

@@ -1,0 +1,206 @@
+{{define "content"}}
+<div class="flex flex-col gap-4">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h2 class="text-xl font-semibold flex items-center gap-2">
+        <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+        Report
+      </h2>
+      <p class="text-sm opacity-70">{{.MonthLabel}}</p>
+    </div>
+    <a href="/reports/export.pdf?month={{.MonthValue}}{{if .GroupByTasks}}&group_by_tasks=1{{end}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}" class="btn btn-outline btn-sm">
+      <i data-lucide="file-down" class="w-4 h-4"></i>
+      Export PDF
+    </a>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body gap-5 p-4 sm:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h3 class="card-title text-base">Completion</h3>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="rounded-lg bg-base-200/70 px-4 py-3 text-sm">
+            <span class="opacity-65">completion</span>
+            <span class="font-semibold">{{.TotalPct}}%</span>
+          </div>
+          <div class="rounded-lg bg-base-200/70 px-4 py-3 text-sm">
+            <span class="opacity-65">done</span>
+            <span class="font-semibold">{{.TotalDone}}</span>
+          </div>
+          <div class="rounded-lg bg-base-200/70 px-4 py-3 text-sm">
+            <span class="opacity-65">due</span>
+            <span class="font-semibold">{{.TotalDue}}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <form method="GET" action="/reports" class="flex flex-col gap-4">
+          <label class="form-control">
+            <span class="label-text">Month</span>
+            <input type="month" name="month" value="{{.MonthValue}}" class="input input-bordered w-full" />
+          </label>
+
+          <label class="form-control">
+            <span class="label-text">User</span>
+            <select name="user_id" class="select select-bordered w-full">
+              <option value="" {{if not .HasSelectedUser}}selected{{end}} disabled>Select user</option>
+              {{range .UserOptions}}
+                <option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.Name}}</option>
+              {{end}}
+            </select>
+          </label>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="filter" class="w-4 h-4"></i>
+              Apply
+            </button>
+            <label class="label cursor-pointer gap-3 px-0">
+              <input type="checkbox" name="group_by_tasks" value="1" class="checkbox checkbox-primary" {{if .GroupByTasks}}checked{{end}} />
+              <span class="label-text">Group by tasks</span>
+            </label>
+          </div>
+        </form>
+
+        <div class="flex min-w-0 flex-col gap-5">
+          {{if not .HasSelectedUser}}
+            <p class="text-sm opacity-70 flex items-center gap-2">
+              <i data-lucide="user-check" class="w-4 h-4"></i>
+              Select a user to display the report.
+            </p>
+          {{else if .Bars}}
+            <div class="grid min-h-96 gap-4 md:grid-cols-[minmax(0,1fr)_12rem]">
+              <div class="min-w-0">
+                <canvas id="report-completion-chart" class="h-96 w-full" aria-label="Report completion chart" role="img"></canvas>
+              </div>
+              <div id="report-chart-legend" class="flex flex-col gap-2 text-sm md:pt-6"></div>
+            </div>
+          {{else}}
+            <p class="text-sm opacity-70 flex items-center gap-2">
+              <i data-lucide="circle-slash" class="w-4 h-4"></i>
+              No task occurrences found for this report.
+            </p>
+          {{end}}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  if (window.lucide) window.lucide.createIcons();
+
+  (() => {
+    const canvas = document.getElementById("report-completion-chart");
+    if (!canvas || !window.Chart) return;
+
+    const chartData = {{.ChartJSON}};
+    const labels = chartData.labels || [];
+    const colors = ["#4f79a7", "#65a30d", "#c084fc", "#f59e0b", "#0891b2", "#db2777", "#64748b"];
+    const users = chartData.users || [];
+    const datasets = users.flatMap((user, index) => {
+      const color = colors[index % colors.length];
+      return [
+        {
+          label: `${user.name} completed`,
+          data: user.completed || [],
+          backgroundColor: color,
+          borderRadius: 5,
+          stack: user.name
+        },
+        {
+          label: `${user.name} missed`,
+          data: user.missed || [],
+          backgroundColor: "#d1d5db",
+          borderRadius: 5,
+          stack: user.name
+        }
+      ];
+    });
+    const legend = document.getElementById("report-chart-legend");
+    if (legend) {
+      legend.innerHTML = "";
+      users.forEach((user, index) => {
+        const color = colors[index % colors.length];
+        const item = document.createElement("div");
+        item.className = "flex items-center gap-2";
+        item.innerHTML = `
+          <span class="h-3 w-3 rounded-full" style="background:${color}"></span>
+          <span class="min-w-0 truncate">${user.name}</span>
+        `;
+        legend.appendChild(item);
+      });
+
+      const missedItem = document.createElement("div");
+      missedItem.className = "flex items-center gap-2";
+      missedItem.innerHTML = `
+        <span class="h-3 w-3 rounded-full bg-[#d1d5db]"></span>
+        <span>missed</span>
+      `;
+      legend.appendChild(missedItem);
+    }
+
+    new Chart(canvas, {
+      type: "bar",
+      data: {
+        labels,
+        datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: "index"
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              afterBody(items) {
+                const item = items[0];
+                const user = users.find((entry) => entry.name === item.dataset.stack);
+                if (!user) return "";
+                const completed = user.completed[item.dataIndex] || 0;
+                const total = user.total[item.dataIndex] || 0;
+                const percent = user.percentage[item.dataIndex] || 0;
+                return `${item.dataset.stack}: ${percent}% complete (${completed}/${total})`;
+              },
+              footer(items) {
+                const index = items[0].dataIndex;
+                return chartData.subLabels[index] || "";
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            grid: {
+              display: false
+            },
+            ticks: {
+              maxRotation: 45,
+              minRotation: labels.length > 12 ? 45 : 0
+            }
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: "Tasks"
+            },
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  })();
+</script>
+{{end}}

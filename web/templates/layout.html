@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="fantasy">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{.Title}}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <style>
+    .sidebar-shell {
+      background:
+        linear-gradient(180deg, color-mix(in oklab, var(--color-primary) 8%, transparent), transparent 26%),
+        var(--color-base-100);
+    }
+
+    .sidebar-nav a {
+      align-items: center;
+      min-height: 2.75rem;
+      padding-block: 0.625rem;
+      border-radius: 0.75rem;
+      color: color-mix(in oklab, var(--color-base-content) 78%, transparent);
+      font-weight: 600;
+      line-height: 1.25;
+      transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .sidebar-nav a i {
+      align-self: center;
+    }
+
+    .sidebar-nav a:hover {
+      background: color-mix(in oklab, var(--color-primary) 10%, var(--color-base-100));
+      color: var(--color-base-content);
+      transform: translateX(2px);
+    }
+
+    .sidebar-nav a.active {
+      background: color-mix(in oklab, var(--color-primary) 16%, var(--color-base-100));
+      color: var(--color-primary);
+    }
+
+    .sidebar-nav a.active i {
+      stroke-width: 2.4;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-base-200 font-[Manrope]">
+  {{if .UserName}}
+  <div class="drawer lg:drawer-open">
+    <input id="app-drawer" type="checkbox" class="drawer-toggle" />
+
+    <div class="drawer-content flex flex-col min-h-screen">
+      <div class="navbar bg-base-100/95 shadow-sm backdrop-blur lg:hidden">
+        <div class="flex-none">
+          <label for="app-drawer" class="btn btn-square btn-ghost" aria-label="Open menu">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </label>
+        </div>
+        <div class="flex-1">
+          <span class="text-lg font-semibold">Mutaba'ah Tracker</span>
+        </div>
+      </div>
+
+      <main class="container mx-auto p-6 flex-1">
+        {{template "content" .}}
+      </main>
+    </div>
+
+    <aside class="drawer-side z-40">
+      <label for="app-drawer" aria-label="Close menu" class="drawer-overlay"></label>
+      <div class="sidebar-shell flex min-h-full w-72 flex-col border-r border-base-300/70 shadow-xl shadow-base-300/20">
+        <div class="px-5 pb-4 pt-5">
+          <a href="/" class="flex items-center gap-3 rounded-2xl px-2 py-2">
+            <span class="grid h-11 w-11 place-items-center rounded-2xl bg-primary text-primary-content shadow-sm">
+              <i data-lucide="book-open-check" class="w-6 h-6"></i>
+            </span>
+            <span class="min-w-0">
+              <span class="block text-xl font-bold leading-tight">Mutaba'ah</span>
+              <span class="block truncate text-xs font-semibold uppercase tracking-wide text-base-content/50">Daily practice tracker</span>
+            </span>
+          </a>
+        </div>
+
+        <ul class="sidebar-nav menu w-full flex-1 gap-1 px-4 pb-4 pt-1">
+          <li class="menu-title px-3 text-[0.7rem] font-bold uppercase tracking-wide text-base-content/45">Overview</li>
+          <li>
+            <a href="/" data-nav-link>
+              <i data-lucide="home" class="w-4 h-4"></i>
+              Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="/calendar" data-nav-link>
+              <i data-lucide="calendar-days" class="w-4 h-4"></i>
+              Calendar
+            </a>
+          </li>
+          {{if eq .UserRole "admin"}}
+          <li class="menu-title mt-4 px-3 text-[0.7rem] font-bold uppercase tracking-wide text-base-content/45">Admin</li>
+          <li>
+            <a href="/settings/tasks" data-nav-link>
+              <i data-lucide="list-checks" class="w-4 h-4"></i>
+              Tasks
+            </a>
+          </li>
+          <li>
+            <a href="/reports" data-nav-link>
+              <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+              Report
+            </a>
+          </li>
+          <li>
+            <a href="/settings/users" data-nav-link>
+              <i data-lucide="users" class="w-4 h-4"></i>
+              Users
+            </a>
+          </li>
+          {{end}}
+          <li class="menu-title mt-4 px-3 text-[0.7rem] font-bold uppercase tracking-wide text-base-content/45">Account</li>
+          <li>
+            <a href="/settings/profile" data-nav-link>
+              <i data-lucide="user-cog" class="w-4 h-4"></i>
+              Profile
+            </a>
+          </li>
+        </ul>
+
+        <div class="m-4 mt-0 flex items-center gap-3 rounded-2xl border border-base-300/70 bg-base-100/75 p-3 shadow-sm">
+          <div class="avatar avatar-placeholder">
+            <div class="w-10 rounded-full bg-accent text-accent-content">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate">{{.UserName}}</p>
+            <p class="text-xs capitalize text-base-content/55">{{.UserRole}}</p>
+          </div>
+          <form method="POST" action="/logout">
+            <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+            <button type="submit" class="btn btn-ghost btn-sm btn-square rounded-xl" title="Sign out" aria-label="Sign out">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </aside>
+  </div>
+  {{else}}
+  <main class="container mx-auto p-6">
+    {{template "content" .}}
+  </main>
+  {{end}}
+
+  <script>
+    document.querySelectorAll("[data-nav-link]").forEach((link) => {
+      const linkPath = new URL(link.href).pathname;
+      const pagePath = window.location.pathname;
+      const isActive = linkPath === "/" ? pagePath === "/" : pagePath === linkPath || pagePath.startsWith(linkPath + "/");
+
+      if (isActive) {
+        link.classList.add("active");
+        link.setAttribute("aria-current", "page");
+      }
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+bin/
+*.log
+.DS_Store
+.claude/
+docs/
+README.md
+PLAN.md
+specification.txt
+docker-compose.yml
+Dockerfile
+.dockerignore

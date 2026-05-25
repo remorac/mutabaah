@@ -1,0 +1,83 @@
+{{define "content"}}
+<div class="flex flex-col gap-6">
+
+  <div class="flex items-center justify-between gap-3">
+    <h1 class="text-2xl font-semibold flex items-center gap-2">
+      <i data-lucide="list-checks" class="w-6 h-6"></i>
+      Tasks
+    </h1>
+    <a href="/settings/tasks/new" class="btn btn-primary btn-sm">
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      New task
+    </a>
+  </div>
+
+  <form method="GET" action="/settings/tasks" class="flex flex-col gap-2 sm:flex-row">
+    <label class="input input-bordered input-sm flex flex-1 items-center gap-2">
+      <i data-lucide="search" class="w-4 h-4 opacity-60"></i>
+      <input type="text" name="q" value="{{.Search}}" placeholder="Search tasks or categories" class="grow" />
+    </label>
+    <div class="flex gap-2">
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i data-lucide="search" class="w-4 h-4"></i>
+        Search
+      </button>
+      {{if .Search}}
+      <a href="/settings/tasks" class="btn btn-sm btn-ghost">Clear</a>
+      {{end}}
+    </div>
+  </form>
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body p-0">
+      {{if .Rows}}
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Frequency</th>
+              <th>Category</th>
+              <th>Window</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Rows}}
+            <tr>
+              <td class="font-medium">{{.Title}}</td>
+              <td><span class="badge badge-outline badge-sm">{{.Frequency}}</span></td>
+              <td>{{if .Category}}<span class="badge badge-ghost badge-sm">{{.Category}}</span>{{else}}<span class="opacity-40">—</span>{{end}}</td>
+              <td class="text-xs opacity-70">
+                {{.StartDate}}{{if .EndDate}} → {{.EndDate}}{{else}} →{{end}}
+              </td>
+              <td>
+                {{if .Active}}
+                  <span class="badge badge-success badge-sm">active</span>
+                {{else}}
+                  <span class="badge badge-ghost badge-sm">inactive</span>
+                {{end}}
+              </td>
+              <td class="text-right">
+                <a href="/settings/tasks/{{.ID}}/edit" class="btn btn-ghost btn-xs">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                  Edit
+                </a>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <div class="p-6 text-center opacity-60">
+        No tasks match this search.
+      </div>
+      {{end}}
+    </div>
+  </div>
+
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}

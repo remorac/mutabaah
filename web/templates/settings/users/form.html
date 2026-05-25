@@ -1,0 +1,117 @@
+{{define "content"}}
+<div class="max-w-xl flex flex-col gap-5" x-data="{ confirmDelete: false }">
+
+  <div class="flex items-center justify-between gap-3">
+    <h1 class="text-2xl font-semibold flex items-center gap-2">
+      <i data-lucide="{{if .IsNew}}user-plus{{else}}user-cog{{end}}" class="w-6 h-6"></i>
+      {{if .IsNew}}New user{{else}}Edit user{{end}}
+    </h1>
+    <a href="/settings/users" class="btn btn-ghost btn-sm">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      Back
+    </a>
+  </div>
+
+  {{if .GeneralError}}
+  <div role="alert" class="alert alert-error">
+    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+    <span>{{.GeneralError}}</span>
+  </div>
+  {{end}}
+
+  {{if .Errors}}
+  <div role="alert" class="alert alert-error">
+    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+    <span>Please fix the errors below.</span>
+  </div>
+  {{end}}
+
+  <form method="POST" action="{{.FormAction}}" class="card bg-base-100 shadow-sm rounded-lg">
+    <div class="card-body flex flex-col gap-5">
+      <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+
+      <label class="block">
+        <span class="label-text font-medium block mb-3">Name</span>
+        <input type="text" name="name" required maxlength="255" value="{{.Name}}"
+          class="input input-bordered w-full {{if index .Errors "name"}}input-error{{end}}" />
+        {{with index .Errors "name"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+      </label>
+
+      <label class="block">
+        <span class="label-text font-medium block mb-3">Email</span>
+        <input type="email" name="email" required maxlength="255" value="{{.Email}}"
+          class="input input-bordered w-full {{if index .Errors "email"}}input-error{{end}}" />
+        {{with index .Errors "email"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+      </label>
+
+      <label class="block">
+        <span class="label-text font-medium block mb-3">Role</span>
+        <select name="role" required
+          class="select select-bordered w-full {{if index .Errors "role"}}select-error{{end}}" {{if .IsSelf}}disabled{{end}}>
+          {{range .Roles}}
+          <option value="{{.}}" {{if eq . $.Role}}selected{{end}}>{{.}}</option>
+          {{end}}
+        </select>
+        {{if .IsSelf}}
+        <input type="hidden" name="role" value="{{.Role}}" />
+        <span class="text-xs opacity-60 mt-1">You can't change your own role.</span>
+        {{end}}
+        {{with index .Errors "role"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+      </label>
+
+      <label class="block">
+        <span class="label-text font-medium block mb-3">
+          Password
+          {{if not .IsNew}}<span class="font-normal opacity-60">(leave blank to keep current)</span>{{end}}
+        </span>
+        <input type="password" name="password" {{if .IsNew}}required{{end}} minlength="12" autocomplete="new-password"
+          class="input input-bordered w-full {{if index .Errors "password"}}input-error{{end}}" />
+        {{with index .Errors "password"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+        <span class="text-xs opacity-60 mt-1">At least 12 characters.</span>
+      </label>
+
+      <div class="card-actions flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-3 border-t border-base-200">
+        {{if .CanDelete}}
+        <button type="button" class="btn btn-error btn-outline btn-sm w-full sm:w-auto"
+          @click.prevent="confirmDelete = true">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+          Delete
+        </button>
+        {{else}}<span></span>{{end}}
+
+        <div class="flex flex-col-reverse sm:flex-row gap-2 w-full sm:w-auto">
+          <a href="/settings/users" class="btn btn-ghost btn-sm w-full sm:w-auto">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-sm w-full sm:w-auto">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            {{if .IsNew}}Create{{else}}Save{{end}}
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  {{if .CanDelete}}
+  <div x-show="confirmDelete" x-cloak class="modal modal-open">
+    <div class="modal-box">
+      <h3 class="font-semibold text-lg">Delete this user?</h3>
+      <p class="py-3 text-sm opacity-80">
+        Their sessions, task assignments, and completion history will be removed.
+        This cannot be undone.
+      </p>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost btn-sm" @click="confirmDelete = false">Cancel</button>
+        <form method="POST" action="{{.DeleteURL}}">
+          <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+          <button type="submit" class="btn btn-error btn-sm">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {{end}}
+
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}

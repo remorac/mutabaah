@@ -1,0 +1,59 @@
+{{define "content"}}
+<div class="flex flex-col gap-4">
+
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <h2 class="text-xl font-semibold flex items-center gap-2">
+      <i data-lucide="calendar-days" class="w-5 h-5"></i>
+      {{.Grid.MonthLabel}}
+    </h2>
+    <div class="join">
+      <a class="btn btn-sm join-item" href="/calendar?month={{.Grid.PrevMonth}}" aria-label="Previous month">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+      </a>
+      <a class="btn btn-sm join-item" href="/calendar?month={{.Grid.TodayMonth}}">Today</a>
+      <a class="btn btn-sm join-item" href="/calendar?month={{.Grid.NextMonth}}" aria-label="Next month">
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-[2fr_1fr] gap-4">
+
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body p-4">
+        <div class="grid grid-cols-7 gap-1 text-xs font-medium opacity-60 mb-1">
+          {{range .Grid.Weekdays}}<div class="text-center">{{.}}</div>{{end}}
+        </div>
+        <div class="grid grid-cols-7 gap-1">
+          {{range .Grid.Weeks}}{{range .}}
+            <button
+              type="button"
+              class="aspect-square rounded-md border border-base-200 p-1.5 text-left transition hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary {{if not .InMonth}}opacity-40{{end}} {{if .IsToday}}ring-2 ring-primary{{end}} {{.IntensityCls}}"
+              hx-get="/calendar/day?date={{.Date}}"
+              hx-target="#calendar-day-panel"
+              hx-swap="innerHTML">
+              <div class="flex items-start justify-between">
+                <span class="text-xs font-semibold">{{.DayNum}}</span>
+                {{if gt .Total 0}}
+                  <span class="text-[10px] opacity-70">{{.Completed}}/{{.Total}}</span>
+                {{end}}
+              </div>
+            </button>
+          {{end}}{{end}}
+        </div>
+      </div>
+    </div>
+
+    <div id="calendar-day-panel" class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <p class="opacity-60 text-sm flex items-center gap-2">
+          <i data-lucide="mouse-pointer-click" class="w-4 h-4"></i>
+          Select a day to see its tasks.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}
