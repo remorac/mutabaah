@@ -41,6 +41,13 @@ services:
       SESSION_SECRET: "${SESSION_SECRET:-dev-secret-please-change-me-32+chars}"
       SESSION_LIFETIME_HOURS: "336"
       SECURE_COOKIES: "false"
+      APP_BASE_URL: "${APP_BASE_URL:-http://localhost:8080}"
+      SMTP_HOST: "${SMTP_HOST:-localhost}"
+      SMTP_PORT: "${SMTP_PORT:-1025}"
+      SMTP_USERNAME: "${SMTP_USERNAME:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-no-reply@example.com}"
+      SMTP_TLS_MODE: "${SMTP_TLS_MODE:-none}"
     ports:
       - "8080:8080"
 

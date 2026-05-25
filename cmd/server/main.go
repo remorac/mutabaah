@@ -55,6 +55,15 @@ func main() {
 
 	queries := repository.New(db)
 	auth := services.NewAuthService(queries, cfg.SessionSecret, cfg.SessionLifetime)
+	mailer := services.NewSMTPMailer(services.SMTPConfig{
+		Host:     cfg.SMTPHost,
+		Port:     cfg.SMTPPort,
+		Username: cfg.SMTPUsername,
+		Password: cfg.SMTPPassword,
+		From:     cfg.SMTPFrom,
+		TLSMode:  cfg.SMTPTLSMode,
+	})
+	passwordResets := services.NewPasswordResetService(queries, mailer, cfg.AppBaseURL)
 	tasks := services.NewTaskService(queries)
 	taskAdmin := services.NewTaskAdminService(queries)
 	userAdmin := services.NewUserAdminService(queries)
@@ -72,7 +81,7 @@ func main() {
 	}
 
 	errorPages := handlers.NewErrorPages(tmpl, logger)
-	authHandler := handlers.NewAuthHandler(auth, tmpl, logger, cfg.SecureCookies)
+	authHandler := handlers.NewAuthHandler(auth, passwordResets, tmpl, logger, cfg.SecureCookies)
 	dashHandler := handlers.NewDashboardHandler(auth, tasks, tmpl, errorPages, logger)
 	calHandler := handlers.NewCalendarHandler(auth, tasks, tmpl, errorPages, logger)
 	reportHandler := handlers.NewReportHandler(auth, tasks, userAdmin, tmpl, errorPages, logger)
@@ -106,6 +115,10 @@ func main() {
 	loginLimit := apmw.RateLimit(10, 6*time.Second)
 	r.Get("/login", authHandler.LoginForm)
 	r.With(loginLimit).Post("/login", authHandler.Login)
+	r.Get("/forgot-password", authHandler.ForgotPasswordForm)
+	r.With(loginLimit).Post("/forgot-password", authHandler.ForgotPassword)
+	r.Get("/reset-password", authHandler.ResetPasswordForm)
+	r.With(loginLimit).Post("/reset-password", authHandler.ResetPassword)
 	r.Post("/logout", authHandler.Logout)
 
 	r.Group(func(r chi.Router) {

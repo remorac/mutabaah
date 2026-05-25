@@ -45,6 +45,14 @@ web/
 - `make sqlc-gen` — regenerate repository code
 - `make fmt` / `make vet` / `make tidy` / `make test`
 
+## Password reset email
+
+Forgot-password links are sent by SMTP. Configure `APP_BASE_URL`,
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, and optionally `SMTP_USERNAME`,
+`SMTP_PASSWORD`, and `SMTP_TLS_MODE` (`starttls`, `implicit`, or `none`).
+For local development, a Mailpit/MailHog-style SMTP listener on port 1025 works
+with `SMTP_TLS_MODE=none`.
+
 ## Phase 1 — schema & seed
 
 After installing the `migrate` CLI and running a local MySQL:

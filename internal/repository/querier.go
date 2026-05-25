@@ -12,9 +12,11 @@ type Querier interface {
 	CountAdmins(ctx context.Context) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CreateMensesPeriod(ctx context.Context, arg CreateMensesPeriodParams) (int64, error)
+	CreatePasswordResetToken(ctx context.Context, arg CreatePasswordResetTokenParams) error
 	CreateSession(ctx context.Context, arg CreateSessionParams) error
 	CreateTask(ctx context.Context, arg CreateTaskParams) (int64, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (int64, error)
+	DeleteExpiredPasswordResetTokens(ctx context.Context) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteMensesPeriod(ctx context.Context, arg DeleteMensesPeriodParams) error
 	DeleteSession(ctx context.Context, id string) error
@@ -27,6 +29,7 @@ type Querier interface {
 	GetTask(ctx context.Context, id int64) (Task, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
+	GetValidPasswordResetToken(ctx context.Context, tokenHash string) (PasswordResetToken, error)
 	ListActiveTasks(ctx context.Context) ([]Task, error)
 	ListAllUsers(ctx context.Context) ([]User, error)
 	ListCompletionsForUserInRange(ctx context.Context, arg ListCompletionsForUserInRangeParams) ([]TaskCompletion, error)
@@ -35,6 +38,7 @@ type Querier interface {
 	ListMensesPeriodsForUserInRange(ctx context.Context, arg ListMensesPeriodsForUserInRangeParams) ([]MensesPeriod, error)
 	ListTasks(ctx context.Context) ([]Task, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
+	MarkPasswordResetTokenUsed(ctx context.Context, tokenHash string) (int64, error)
 	MarkTaskComplete(ctx context.Context, arg MarkTaskCompleteParams) error
 	MarkTaskIncomplete(ctx context.Context, arg MarkTaskIncompleteParams) error
 	SetTaskActive(ctx context.Context, arg SetTaskActiveParams) error

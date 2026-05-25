@@ -106,6 +106,14 @@ type MensesPeriod struct {
 	UpdatedAt time.Time    `json:"updated_at"`
 }
 
+type PasswordResetToken struct {
+	TokenHash string       `json:"token_hash"`
+	UserID    int64        `json:"user_id"`
+	ExpiresAt time.Time    `json:"expires_at"`
+	UsedAt    sql.NullTime `json:"used_at"`
+	CreatedAt time.Time    `json:"created_at"`
+}
+
 type Session struct {
 	ID        string    `json:"id"`
 	UserID    int64     `json:"user_id"`
