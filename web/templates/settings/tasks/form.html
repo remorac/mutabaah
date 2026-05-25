@@ -30,18 +30,12 @@
         {{with index .Errors "title"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
       </label>
 
-      <label class="block">
-        <span class="label-text font-medium block mb-3">Description</span>
-        <textarea name="description" rows="4"
-          class="textarea textarea-bordered w-full resize-y">{{.Description}}</textarea>
-      </label>
-
       <div class="grid md:grid-cols-2 gap-4">
         <label class="block">
-          <span class="label-text font-medium block mb-3">Category</span>
-          <input type="text" name="category" maxlength="64" value="{{.Category}}" placeholder="e.g. fard, sunnah, quran"
-            class="input input-bordered w-full {{if index .Errors "category"}}input-error{{end}}" />
-          {{with index .Errors "category"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+          <span class="label-text font-medium block mb-3">Description</span>
+          <input type="text" name="description" maxlength="64" value="{{.Description}}" placeholder="e.g. fard, sunnah, quran"
+            class="input input-bordered w-full {{if index .Errors "description"}}input-error{{end}}" />
+          {{with index .Errors "description"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
         </label>
 
         <label class="block">
@@ -89,9 +83,9 @@
 
       <div class="card-actions flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-3 border-t border-base-200">
         {{if not .IsNew}}
-        <label for="task-deactivate-modal" class="btn btn-error btn-outline btn-sm w-full sm:w-auto">
+        <label for="task-delete-modal" class="btn btn-error btn-outline btn-sm w-full sm:w-auto">
           <i data-lucide="trash-2" class="w-4 h-4"></i>
-          Deactivate
+          Delete
         </label>
         {{else}}<span></span>{{end}}
 
@@ -107,26 +101,27 @@
   </form>
 
   {{if not .IsNew}}
-  <input type="checkbox" id="task-deactivate-modal" class="modal-toggle" />
+  <input type="checkbox" id="task-delete-modal" class="modal-toggle" />
   <div class="modal" role="dialog" aria-modal="true">
     <div class="modal-box">
-      <h3 class="font-semibold text-lg">Deactivate this task?</h3>
+      <h3 class="font-semibold text-lg">Delete this task?</h3>
       <p class="py-3 text-sm opacity-80">
-        The task will be hidden from users but its completion history is preserved.
-        You can re-activate it later by editing and toggling "Active" back on.
+        The task and all of its completion history will be permanently removed.
+        This cannot be undone. To hide a task without losing history, toggle
+        "Active" off instead.
       </p>
       <div class="modal-action">
-        <label for="task-deactivate-modal" class="btn btn-ghost btn-sm">Cancel</label>
+        <label for="task-delete-modal" class="btn btn-ghost btn-sm">Cancel</label>
         <form method="POST" action="{{.DeleteURL}}">
           <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
           <button type="submit" class="btn btn-error btn-sm">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
-            Deactivate
+            Delete
           </button>
         </form>
       </div>
     </div>
-    <label class="modal-backdrop" for="task-deactivate-modal">Close</label>
+    <label class="modal-backdrop" for="task-delete-modal">Close</label>
   </div>
   {{end}}
 

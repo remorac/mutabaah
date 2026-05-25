@@ -16,8 +16,7 @@ CREATE TABLE users (
 CREATE TABLE tasks (
     id          BIGINT       NOT NULL AUTO_INCREMENT,
     title       VARCHAR(255) NOT NULL,
-    description TEXT         NULL,
-    category    VARCHAR(64)  NULL,
+    description VARCHAR(64)  NULL,
     frequency   ENUM('daily','weekly','monthly','yearly') NOT NULL,
     start_date  DATE         NOT NULL,
     end_date    DATE         NULL,

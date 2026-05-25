@@ -15,7 +15,7 @@
   <form method="GET" action="/settings/tasks" class="flex flex-col gap-2 sm:flex-row">
     <label class="input input-bordered input-sm flex flex-1 items-center gap-2">
       <i data-lucide="search" class="w-4 h-4 opacity-60"></i>
-      <input type="text" name="q" value="{{.Search}}" placeholder="Search tasks or categories" class="grow" />
+      <input type="text" name="q" value="{{.Search}}" placeholder="Search tasks or descriptions" class="grow" />
     </label>
     <div class="flex gap-2">
       <button type="submit" class="btn btn-sm btn-primary">
@@ -38,7 +38,7 @@
               <th>#</th>
               <th>Title</th>
               <th>Frequency</th>
-              <th>Category</th>
+              <th>Description</th>
               <th>Window</th>
               <th>Status</th>
               <th></th>
@@ -50,7 +50,7 @@
               <td class="opacity-60 text-xs">{{.Sequence}}</td>
               <td class="font-medium">{{.Title}}</td>
               <td><span class="badge badge-outline badge-sm">{{.Frequency}}</span></td>
-              <td>{{if .Category}}<span class="badge badge-ghost badge-sm">{{.Category}}</span>{{else}}<span class="opacity-40">—</span>{{end}}</td>
+              <td class="text-sm">{{if .Description}}{{.Description}}{{else}}<span class="opacity-40">—</span>{{end}}</td>
               <td class="text-xs opacity-70">
                 {{.StartDate}}{{if .EndDate}} → {{.EndDate}}{{else}} →{{end}}
               </td>

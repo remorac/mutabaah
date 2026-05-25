@@ -6,7 +6,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 )
 
 type Querier interface {
@@ -29,7 +28,6 @@ type Querier interface {
 	ListAllUsers(ctx context.Context) ([]User, error)
 	ListCompletionsForUserInRange(ctx context.Context, arg ListCompletionsForUserInRangeParams) ([]TaskCompletion, error)
 	ListCompletionsForUserOnDate(ctx context.Context, arg ListCompletionsForUserOnDateParams) ([]TaskCompletion, error)
-	ListTaskCategories(ctx context.Context) ([]sql.NullString, error)
 	ListTasks(ctx context.Context) ([]Task, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	MarkTaskComplete(ctx context.Context, arg MarkTaskCompleteParams) error

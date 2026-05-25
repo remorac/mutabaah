@@ -107,8 +107,6 @@ type Session struct {
 type Task struct {
 	ID          int64          `json:"id"`
 	Title       string         `json:"title"`
-	Description sql.NullString `json:"description"`
-	Category    sql.NullString `json:"category"`
 	Frequency   TasksFrequency `json:"frequency"`
 	StartDate   time.Time      `json:"start_date"`
 	EndDate     sql.NullTime   `json:"end_date"`
@@ -116,6 +114,7 @@ type Task struct {
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	Sequence    int32          `json:"sequence"`
+	Description sql.NullString `json:"description"`
 }
 
 type TaskCompletion struct {

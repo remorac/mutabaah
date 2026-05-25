@@ -35,7 +35,6 @@ func (e *ValidationError) Error() string {
 type TaskInput struct {
 	Title       string
 	Description string
-	Category    string
 	Frequency   string
 	StartDate   string // YYYY-MM-DD
 	EndDate     string // YYYY-MM-DD or ""
@@ -45,7 +44,7 @@ type TaskInput struct {
 
 // TaskListFilter narrows the settings task listing.
 type TaskListFilter struct {
-	Search string // case-insensitive substring on title or category
+	Search string // case-insensitive substring on title or description
 }
 
 // TaskAdminService implements admin-side task CRUD with validation.
@@ -70,11 +69,11 @@ func (s *TaskAdminService) List(ctx context.Context, f TaskListFilter) ([]reposi
 	for _, t := range tasks {
 		if search != "" {
 			title := strings.ToLower(t.Title)
-			category := ""
-			if t.Category.Valid {
-				category = strings.ToLower(t.Category.String)
+			desc := ""
+			if t.Description.Valid {
+				desc = strings.ToLower(t.Description.String)
 			}
-			if !strings.Contains(title, search) && !strings.Contains(category, search) {
+			if !strings.Contains(title, search) && !strings.Contains(desc, search) {
 				continue
 			}
 		}
@@ -119,7 +118,6 @@ func (s *TaskAdminService) Update(ctx context.Context, id int64, in TaskInput) e
 	return s.q.UpdateTask(ctx, repository.UpdateTaskParams{
 		Title:       params.Title,
 		Description: params.Description,
-		Category:    params.Category,
 		Frequency:   params.Frequency,
 		StartDate:   params.StartDate,
 		EndDate:     params.EndDate,
@@ -170,15 +168,16 @@ func (s *TaskAdminService) Move(ctx context.Context, id int64, delta int) error 
 	return nil
 }
 
-// SoftDelete marks a task inactive, preserving its completion history.
-func (s *TaskAdminService) SoftDelete(ctx context.Context, id int64) error {
+// Delete permanently removes a task and (via FK ON DELETE CASCADE) all of its
+// completion history.
+func (s *TaskAdminService) Delete(ctx context.Context, id int64) error {
 	if _, err := s.q.GetTask(ctx, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrTaskNotFound
 		}
 		return err
 	}
-	return s.q.SetTaskActive(ctx, repository.SetTaskActiveParams{ID: id, Active: false})
+	return s.q.DeleteTask(ctx, id)
 }
 
 func (s *TaskAdminService) validateAndBuild(in TaskInput) (repository.CreateTaskParams, error) {
@@ -216,12 +215,10 @@ func (s *TaskAdminService) validateAndBuild(in TaskInput) (repository.CreateTask
 		}
 	}
 
-	cat := strings.TrimSpace(in.Category)
-	if len(cat) > 64 {
-		verrs["category"] = "Category must be 64 characters or fewer."
-	}
-
 	desc := strings.TrimSpace(in.Description)
+	if len(desc) > 64 {
+		verrs["description"] = "Description must be 64 characters or fewer."
+	}
 
 	var seq int32
 	if s := strings.TrimSpace(in.Sequence); s != "" {
@@ -241,15 +238,10 @@ func (s *TaskAdminService) validateAndBuild(in TaskInput) (repository.CreateTask
 	if desc != "" {
 		nullDesc = sql.NullString{String: desc, Valid: true}
 	}
-	var nullCat sql.NullString
-	if cat != "" {
-		nullCat = sql.NullString{String: cat, Valid: true}
-	}
 
 	return repository.CreateTaskParams{
 		Title:       title,
 		Description: nullDesc,
-		Category:    nullCat,
 		Frequency:   freq,
 		StartDate:   start,
 		EndDate:     end,

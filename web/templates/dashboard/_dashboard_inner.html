@@ -59,12 +59,21 @@
       <span class="text-sm font-normal opacity-60">— last 30 days</span>
     </h2>
     {{if .Missed}}
-    <div class="card bg-base-100 shadow-sm">
-      <div class="card-body">
-        <ul class="flex flex-col">
-          {{range .Missed}}{{template "_task_row.html" .}}{{end}}
-        </ul>
+    <div class="flex flex-col gap-3">
+      {{range .Missed}}
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+          <h3 class="card-title text-base flex items-center gap-2">
+            <i data-lucide="calendar" class="w-4 h-4"></i>
+            {{.DateLabel}}
+            <span class="badge badge-ghost">{{len .Rows}}</span>
+          </h3>
+          <ul class="flex flex-col">
+            {{range .Rows}}{{template "_task_row.html" .}}{{end}}
+          </ul>
+        </div>
       </div>
+      {{end}}
     </div>
     {{else}}
     <div class="alert alert-success">

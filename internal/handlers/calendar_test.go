@@ -15,10 +15,10 @@ func calendarDate(y int, m time.Month, d int) time.Time {
 
 func TestCalendarDayFromOccurrences(t *testing.T) {
 	task := repository.Task{
-		ID:        7,
-		Title:     "Dhikr pagi",
-		Category:  sql.NullString{String: "dhikr", Valid: true},
-		Frequency: repository.TasksFrequencyDaily,
+		ID:          7,
+		Title:       "Dhikr pagi",
+		Description: sql.NullString{String: "dhikr", Valid: true},
+		Frequency:   repository.TasksFrequencyDaily,
 	}
 	occs := []services.TaskOccurrence{
 		{Task: task, DueDate: calendarDate(2026, 5, 25), Status: services.StatusCompleted},
@@ -32,7 +32,7 @@ func TestCalendarDayFromOccurrences(t *testing.T) {
 	if view.Completed != 1 || view.Total != 2 {
 		t.Fatalf("totals = %d/%d, want 1/2", view.Completed, view.Total)
 	}
-	if len(view.Tasks) != 2 || view.Tasks[0].Category != "dhikr" || view.Tasks[1].Category != "" {
-		t.Fatalf("tasks = %+v, want category carried only for valid category", view.Tasks)
+	if len(view.Tasks) != 2 || view.Tasks[0].Description != "dhikr" || view.Tasks[1].Description != "" {
+		t.Fatalf("tasks = %+v, want description carried only for valid description", view.Tasks)
 	}
 }

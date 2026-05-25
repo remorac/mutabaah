@@ -29,16 +29,16 @@ func NewSettingsTasksHandler(auth *services.AuthService, admin *services.TaskAdm
 }
 
 type taskListRow struct {
-	ID        int64
-	Title     string
-	Category  string
-	Frequency string
-	StartDate string
-	EndDate   string
-	Active    bool
-	Sequence  int32
-	IsFirst   bool
-	IsLast    bool
+	ID          int64
+	Title       string
+	Description string
+	Frequency   string
+	StartDate   string
+	EndDate     string
+	Active      bool
+	Sequence    int32
+	IsFirst     bool
+	IsLast      bool
 }
 
 type taskListView struct {
@@ -55,7 +55,6 @@ type taskFormView struct {
 	Errors      map[string]string
 	Title       string
 	Description string
-	Category    string
 	Frequency   string
 	StartDate   string
 	EndDate     string
@@ -82,24 +81,24 @@ func (h *SettingsTasksHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows := make([]taskListRow, 0, len(tasks))
 	for i, t := range tasks {
-		var cat, end string
-		if t.Category.Valid {
-			cat = t.Category.String
+		var desc, end string
+		if t.Description.Valid {
+			desc = t.Description.String
 		}
 		if t.EndDate.Valid {
 			end = t.EndDate.Time.Format("2006-01-02")
 		}
 		rows = append(rows, taskListRow{
-			ID:        t.ID,
-			Title:     t.Title,
-			Category:  cat,
-			Frequency: string(t.Frequency),
-			StartDate: t.StartDate.Format("2006-01-02"),
-			EndDate:   end,
-			Active:    t.Active,
-			Sequence:  t.Sequence,
-			IsFirst:   i == 0,
-			IsLast:    i == len(tasks)-1,
+			ID:          t.ID,
+			Title:       t.Title,
+			Description: desc,
+			Frequency:   string(t.Frequency),
+			StartDate:   t.StartDate.Format("2006-01-02"),
+			EndDate:     end,
+			Active:      t.Active,
+			Sequence:    t.Sequence,
+			IsFirst:     i == 0,
+			IsLast:      i == len(tasks)-1,
 		})
 	}
 
@@ -171,7 +170,6 @@ func (h *SettingsTasksHandler) Create(w http.ResponseWriter, r *http.Request) {
 				Errors:      ve.Fields,
 				Title:       input.Title,
 				Description: input.Description,
-				Category:    input.Category,
 				Frequency:   input.Frequency,
 				StartDate:   input.StartDate,
 				EndDate:     input.EndDate,
@@ -209,12 +207,9 @@ func (h *SettingsTasksHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var desc, cat, end string
+	var desc, end string
 	if t.Description.Valid {
 		desc = t.Description.String
-	}
-	if t.Category.Valid {
-		cat = t.Category.String
 	}
 	if t.EndDate.Valid {
 		end = t.EndDate.Time.Format("2006-01-02")
@@ -232,7 +227,6 @@ func (h *SettingsTasksHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 		DeleteURL:   "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",
 		Title:       t.Title,
 		Description: desc,
-		Category:    cat,
 		Frequency:   string(t.Frequency),
 		StartDate:   t.StartDate.Format("2006-01-02"),
 		EndDate:     end,
@@ -278,7 +272,6 @@ func (h *SettingsTasksHandler) Update(w http.ResponseWriter, r *http.Request) {
 				Errors:      ve.Fields,
 				Title:       input.Title,
 				Description: input.Description,
-				Category:    input.Category,
 				Frequency:   input.Frequency,
 				StartDate:   input.StartDate,
 				EndDate:     input.EndDate,
@@ -332,7 +325,7 @@ func (h *SettingsTasksHandler) move(w http.ResponseWriter, r *http.Request, delt
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
-// Delete soft-deletes a task (sets active=false).
+// Delete permanently removes a task and its completion history.
 func (h *SettingsTasksHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	user, _ := apmw.UserFromContext(r.Context())
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -340,7 +333,7 @@ func (h *SettingsTasksHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad id", http.StatusBadRequest)
 		return
 	}
-	if err := h.admin.SoftDelete(r.Context(), id); err != nil {
+	if err := h.admin.Delete(r.Context(), id); err != nil {
 		if errors.Is(err, services.ErrTaskNotFound) {
 			h.errs.NotFound(w, r)
 			return
@@ -348,7 +341,7 @@ func (h *SettingsTasksHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		h.errs.ServerError(w, r, err)
 		return
 	}
-	h.logger.Info("task soft-deleted", "id", id, "by", user.ID)
+	h.logger.Info("task deleted", "id", id, "by", user.ID)
 	http.Redirect(w, r, "/settings/tasks", http.StatusSeeOther)
 }
 
@@ -363,8 +356,7 @@ func (h *SettingsTasksHandler) renderFormError(w http.ResponseWriter, _ *http.Re
 func parseTaskInput(r *http.Request) services.TaskInput {
 	return services.TaskInput{
 		Title:       r.PostFormValue("title"),
-		Description: r.PostFormValue("description"),
-		Category:    strings.TrimSpace(r.PostFormValue("category")),
+		Description: strings.TrimSpace(r.PostFormValue("description")),
 		Frequency:   r.PostFormValue("frequency"),
 		StartDate:   r.PostFormValue("start_date"),
 		EndDate:     r.PostFormValue("end_date"),

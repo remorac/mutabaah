@@ -62,14 +62,14 @@ func main() {
 
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	starter := []repository.CreateTaskParams{
-		{Title: "Subuh", Category: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
-		{Title: "Dzuhur", Category: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
-		{Title: "Ashar", Category: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
-		{Title: "Maghrib", Category: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
-		{Title: "Isya", Category: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
-		{Title: "Dhikr pagi & petang", Description: nullString("Al-ma'thurat / wirid pagi-petang"), Category: nullString("dhikr"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
-		{Title: "Surah Al-Kahf", Description: nullString("Dibaca tiap Jumat"), Category: nullString("quran"), Frequency: repository.TasksFrequencyWeekly, StartDate: today, Active: true},
-		{Title: "Khatam Al-Qur'an", Description: nullString("Target khatam bulanan"), Category: nullString("quran"), Frequency: repository.TasksFrequencyMonthly, StartDate: today, Active: true},
+		{Title: "Subuh", Description: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
+		{Title: "Dzuhur", Description: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
+		{Title: "Ashar", Description: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
+		{Title: "Maghrib", Description: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
+		{Title: "Isya", Description: nullString("fard"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
+		{Title: "Dhikr pagi & petang", Description: nullString("dhikr"), Frequency: repository.TasksFrequencyDaily, StartDate: today, Active: true},
+		{Title: "Surah Al-Kahf", Description: nullString("quran"), Frequency: repository.TasksFrequencyWeekly, StartDate: today, Active: true},
+		{Title: "Khatam Al-Qur'an", Description: nullString("quran"), Frequency: repository.TasksFrequencyMonthly, StartDate: today, Active: true},
 	}
 
 	existing, err := q.ListTasks(ctx)

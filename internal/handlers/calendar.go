@@ -56,11 +56,11 @@ type calendarPageView struct {
 }
 
 type calendarDayTaskView struct {
-	TaskID    int64
-	Title     string
-	Category  string
-	Frequency string
-	Status    string
+	TaskID      int64
+	Title       string
+	Description string
+	Frequency   string
+	Status      string
 }
 
 type calendarDayView struct {
@@ -147,16 +147,16 @@ func calendarDayFromOccurrences(date time.Time, occs []services.TaskOccurrence) 
 		Total:     len(occs),
 	}
 	for _, occ := range occs {
-		var category string
-		if occ.Task.Category.Valid {
-			category = occ.Task.Category.String
+		var desc string
+		if occ.Task.Description.Valid {
+			desc = occ.Task.Description.String
 		}
 		view.Tasks = append(view.Tasks, calendarDayTaskView{
-			TaskID:    occ.Task.ID,
-			Title:     occ.Task.Title,
-			Category:  category,
-			Frequency: string(occ.Task.Frequency),
-			Status:    string(occ.Status),
+			TaskID:      occ.Task.ID,
+			Title:       occ.Task.Title,
+			Description: desc,
+			Frequency:   string(occ.Task.Frequency),
+			Status:      string(occ.Status),
 		})
 		if occ.Status == services.StatusCompleted {
 			view.Completed++

@@ -44,21 +44,26 @@ func NewDashboardHandler(auth *services.AuthService, tasks *services.TaskService
 const missedWindowDays = 30
 
 type taskRowView struct {
-	TaskID       int64
-	Title        string
-	Category     string
-	Frequency    string
-	DueDate      string // YYYY-MM-DD, used in the form action URL
-	DueDateLabel string // human label, e.g. "Today" or "Mon, Jan 15"
-	Status       string // "pending" | "missed" | "completed"
-	CSRFToken    string
+	TaskID      int64
+	Title       string
+	Description string
+	Frequency   string
+	DueDate     string // YYYY-MM-DD, used in the form action URL
+	Status      string // "pending" | "missed" | "completed"
+	CSRFToken   string
+}
+
+type missedGroupView struct {
+	Date      string // YYYY-MM-DD
+	DateLabel string // human label, e.g. "Mon, 25 May 2026"
+	Rows      []taskRowView
 }
 
 type dashboardInnerView struct {
 	Today        string
 	TodayPending []taskRowView
 	TodayDone    []taskRowView
-	Missed       []taskRowView
+	Missed       []missedGroupView
 }
 
 type dashboardPageView struct {
@@ -153,40 +158,46 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 		Today: today.Format("Mon, 02 Jan 2006"),
 	}
 	for _, occ := range todayOccs {
-		row := rowFromOccurrence(occ, today, csrfToken)
+		row := rowFromOccurrence(occ, csrfToken)
 		if row.Status == "completed" {
 			view.TodayDone = append(view.TodayDone, row)
 		} else {
 			view.TodayPending = append(view.TodayPending, row)
 		}
 	}
+	groupIdx := map[string]int{}
 	for _, occ := range missedRange {
 		if occ.Status != services.StatusMissed {
 			continue
 		}
-		view.Missed = append(view.Missed, rowFromOccurrence(occ, today, csrfToken))
+		key := occ.DueDate.Format("2006-01-02")
+		idx, ok := groupIdx[key]
+		if !ok {
+			view.Missed = append(view.Missed, missedGroupView{
+				Date:      key,
+				DateLabel: occ.DueDate.Format("Mon, 02 Jan 2006"),
+			})
+			idx = len(view.Missed) - 1
+			groupIdx[key] = idx
+		}
+		view.Missed[idx].Rows = append(view.Missed[idx].Rows, rowFromOccurrence(occ, csrfToken))
 	}
 	return view, nil
 }
 
-func rowFromOccurrence(occ services.TaskOccurrence, today time.Time, csrfToken string) taskRowView {
-	label := occ.DueDate.Format("Mon, 02 Jan")
-	if occ.DueDate.Equal(today) {
-		label = "Today"
-	}
-	var category string
-	if occ.Task.Category.Valid {
-		category = occ.Task.Category.String
+func rowFromOccurrence(occ services.TaskOccurrence, csrfToken string) taskRowView {
+	var desc string
+	if occ.Task.Description.Valid {
+		desc = occ.Task.Description.String
 	}
 	return taskRowView{
-		TaskID:       occ.Task.ID,
-		Title:        occ.Task.Title,
-		Category:     category,
-		Frequency:    string(occ.Task.Frequency),
-		DueDate:      occ.DueDate.Format("2006-01-02"),
-		DueDateLabel: label,
-		Status:       string(occ.Status),
-		CSRFToken:    csrfToken,
+		TaskID:      occ.Task.ID,
+		Title:       occ.Task.Title,
+		Description: desc,
+		Frequency:   string(occ.Task.Frequency),
+		DueDate:     occ.DueDate.Format("2006-01-02"),
+		Status:      string(occ.Status),
+		CSRFToken:   csrfToken,
 	}
 }
 

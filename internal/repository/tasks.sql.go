@@ -12,31 +12,29 @@ import (
 )
 
 const createTask = `-- name: CreateTask :execlastid
-INSERT INTO tasks (title, description, category, frequency, start_date, end_date, active, sequence)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tasks (title, frequency, start_date, end_date, active, sequence, description)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateTaskParams struct {
 	Title       string         `json:"title"`
-	Description sql.NullString `json:"description"`
-	Category    sql.NullString `json:"category"`
 	Frequency   TasksFrequency `json:"frequency"`
 	StartDate   time.Time      `json:"start_date"`
 	EndDate     sql.NullTime   `json:"end_date"`
 	Active      bool           `json:"active"`
 	Sequence    int32          `json:"sequence"`
+	Description sql.NullString `json:"description"`
 }
 
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, createTask,
 		arg.Title,
-		arg.Description,
-		arg.Category,
 		arg.Frequency,
 		arg.StartDate,
 		arg.EndDate,
 		arg.Active,
 		arg.Sequence,
+		arg.Description,
 	)
 	if err != nil {
 		return 0, err
@@ -54,7 +52,7 @@ func (q *Queries) DeleteTask(ctx context.Context, id int64) error {
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
+SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description
 FROM tasks
 WHERE id = ?
 `
@@ -65,8 +63,6 @@ func (q *Queries) GetTask(ctx context.Context, id int64) (Task, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
-		&i.Description,
-		&i.Category,
 		&i.Frequency,
 		&i.StartDate,
 		&i.EndDate,
@@ -74,12 +70,13 @@ func (q *Queries) GetTask(ctx context.Context, id int64) (Task, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Sequence,
+		&i.Description,
 	)
 	return i, err
 }
 
 const listActiveTasks = `-- name: ListActiveTasks :many
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
+SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description
 FROM tasks
 WHERE active = TRUE
 ORDER BY sequence ASC, created_at DESC
@@ -97,8 +94,6 @@ func (q *Queries) ListActiveTasks(ctx context.Context) ([]Task, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
-			&i.Description,
-			&i.Category,
 			&i.Frequency,
 			&i.StartDate,
 			&i.EndDate,
@@ -106,6 +101,7 @@ func (q *Queries) ListActiveTasks(ctx context.Context) ([]Task, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Sequence,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -120,38 +116,8 @@ func (q *Queries) ListActiveTasks(ctx context.Context) ([]Task, error) {
 	return items, nil
 }
 
-const listTaskCategories = `-- name: ListTaskCategories :many
-SELECT DISTINCT category
-FROM tasks
-WHERE category IS NOT NULL AND category <> ''
-ORDER BY category ASC
-`
-
-func (q *Queries) ListTaskCategories(ctx context.Context) ([]sql.NullString, error) {
-	rows, err := q.db.QueryContext(ctx, listTaskCategories)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []sql.NullString{}
-	for rows.Next() {
-		var category sql.NullString
-		if err := rows.Scan(&category); err != nil {
-			return nil, err
-		}
-		items = append(items, category)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listTasks = `-- name: ListTasks :many
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
+SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description
 FROM tasks
 ORDER BY sequence ASC, created_at DESC
 `
@@ -168,8 +134,6 @@ func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
-			&i.Description,
-			&i.Category,
 			&i.Frequency,
 			&i.StartDate,
 			&i.EndDate,
@@ -177,6 +141,7 @@ func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Sequence,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -221,32 +186,30 @@ func (q *Queries) SetTaskSequence(ctx context.Context, arg SetTaskSequenceParams
 
 const updateTask = `-- name: UpdateTask :exec
 UPDATE tasks
-SET title = ?, description = ?, category = ?, frequency = ?, start_date = ?, end_date = ?, active = ?, sequence = ?
+SET title = ?, frequency = ?, start_date = ?, end_date = ?, active = ?, sequence = ?, description = ?
 WHERE id = ?
 `
 
 type UpdateTaskParams struct {
 	Title       string         `json:"title"`
-	Description sql.NullString `json:"description"`
-	Category    sql.NullString `json:"category"`
 	Frequency   TasksFrequency `json:"frequency"`
 	StartDate   time.Time      `json:"start_date"`
 	EndDate     sql.NullTime   `json:"end_date"`
 	Active      bool           `json:"active"`
 	Sequence    int32          `json:"sequence"`
+	Description sql.NullString `json:"description"`
 	ID          int64          `json:"id"`
 }
 
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
 	_, err := q.db.ExecContext(ctx, updateTask,
 		arg.Title,
-		arg.Description,
-		arg.Category,
 		arg.Frequency,
 		arg.StartDate,
 		arg.EndDate,
 		arg.Active,
 		arg.Sequence,
+		arg.Description,
 		arg.ID,
 	)
 	return err
