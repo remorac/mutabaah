@@ -16,7 +16,7 @@
         <div class="w-16 h-16 rounded-2xl bg-base-200 grid place-items-center mb-3">
           <i data-lucide="coffee" class="w-8 h-8 opacity-40"></i>
         </div>
-        <h3 class="font-semibold text-base">No tasks scheduled</h3>
+        <h3 class="font-bold text-base">No tasks scheduled</h3>
         <p class="text-sm opacity-60 mt-1">Enjoy your day. Check back tomorrow.</p>
       </div>
     </div>
@@ -36,7 +36,7 @@
       {{range .Missed}}
       <div class="card bg-base-100 shadow-sm border border-base-200">
         <div class="card-body">
-          <h3 class="card-title text-sm uppercase tracking-wide opacity-70 font-semibold flex items-center gap-2">
+          <h3 class="card-title text-sm uppercase tracking-wide opacity-70 font-bold flex items-center gap-2">
             <i data-lucide="calendar" class="w-4 h-4"></i>
             {{.DateLabel}}
             <span class="badge badge-ghost badge-sm">{{len .Rows}}</span>
@@ -54,7 +54,7 @@
         <div class="w-16 h-16 rounded-2xl bg-success/10 text-success grid place-items-center mb-3">
           <i data-lucide="check-circle-2" class="w-8 h-8"></i>
         </div>
-        <h3 class="font-semibold text-base">No missed tasks</h3>
+        <h3 class="font-bold text-base">No missed tasks</h3>
         <p class="text-sm opacity-60 mt-1">Since Saturday. Keep it up!</p>
       </div>
     </div>

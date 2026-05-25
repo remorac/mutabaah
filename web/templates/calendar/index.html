@@ -6,12 +6,12 @@
       <i data-lucide="calendar-days" class="w-5 h-5 text-primary"></i>
       {{.Grid.MonthLabel}}
     </h2>
-    <div class="join shadow-sm">
-      <a class="btn btn-sm join-item" href="/calendar?month={{.Grid.PrevMonth}}" aria-label="Previous month">
+    <div class="join shadow-sm rounded-sm">
+      <a class="btn btn-sm join-item border-base-200 bg-base-100 hover:bg-base-200" href="/calendar?month={{.Grid.PrevMonth}}" aria-label="Previous month">
         <i data-lucide="chevron-left" class="w-4 h-4"></i>
       </a>
-      <a class="btn btn-sm join-item" href="/calendar?month={{.Grid.TodayMonth}}">Today</a>
-      <a class="btn btn-sm join-item" href="/calendar?month={{.Grid.NextMonth}}" aria-label="Next month">
+      <a class="btn btn-sm join-item border-base-200 bg-base-100 hover:bg-base-200" href="/calendar?month={{.Grid.TodayMonth}}">Today</a>
+      <a class="btn btn-sm join-item border-base-200 bg-base-100 hover:bg-base-200" href="/calendar?month={{.Grid.NextMonth}}" aria-label="Next month">
         <i data-lucide="chevron-right" class="w-4 h-4"></i>
       </a>
     </div>

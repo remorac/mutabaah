@@ -57,7 +57,7 @@
     <div class="rounded-xl border border-base-300/60 bg-base-100 p-4 shadow-sm">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <h2 class="break-words text-base font-semibold leading-snug">
+          <h2 class="break-words text-base font-bold leading-snug">
             {{.Name}}
             {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1 align-middle">you</span>{{end}}
           </h2>
@@ -92,7 +92,7 @@
       <div class="w-16 h-16 rounded-2xl bg-base-200 grid place-items-center mb-3">
         <i data-lucide="users" class="w-8 h-8 opacity-40"></i>
       </div>
-      <h3 class="font-semibold text-base">No users yet</h3>
+      <h3 class="font-bold text-base">No users yet</h3>
       <p class="text-sm opacity-60 mt-1">Add your first user to get started.</p>
       <a href="/settings/users/new" class="btn btn-primary btn-sm mt-4 shadow-sm">
         <i data-lucide="plus" class="w-4 h-4"></i>
