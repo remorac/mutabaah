@@ -56,7 +56,7 @@
     <h2 class="text-xl font-semibold mb-3 flex items-center gap-2">
       <i data-lucide="alert-circle" class="w-5 h-5 text-error"></i>
       Missed
-      <span class="text-sm font-normal opacity-60">— last 30 days</span>
+      <span class="text-sm font-normal opacity-60">— since Saturday</span>
     </h2>
     {{if .Missed}}
     <div class="flex flex-col gap-3">
@@ -78,7 +78,7 @@
     {{else}}
     <div class="alert alert-success">
       <i data-lucide="check-circle" class="w-4 h-4"></i>
-      <span>No missed tasks in the last 30 days.</span>
+      <span>No missed tasks since Saturday.</span>
     </div>
     {{end}}
   </section>

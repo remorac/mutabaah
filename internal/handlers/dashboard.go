@@ -38,11 +38,6 @@ func NewDashboardHandler(auth *services.AuthService, tasks *services.TaskService
 	return &DashboardHandler{auth: auth, tasks: tasks, tmpl: tmpl, errs: errs, logger: logger, now: time.Now}
 }
 
-// missedWindowDays bounds how far back the "Missed" section looks. The
-// occurrence engine can answer further back, but the dashboard caps it so
-// the page stays scannable.
-const missedWindowDays = 30
-
 type taskRowView struct {
 	TaskID      int64
 	Title       string
@@ -147,7 +142,7 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 	if err != nil {
 		return dashboardInnerView{}, err
 	}
-	missedFrom := today.AddDate(0, 0, -missedWindowDays)
+	missedFrom := saturdayWeekStart(today)
 	missedTo := today.AddDate(0, 0, -1)
 	missedRange, err := h.tasks.OccurrencesBetweenAsOf(r.Context(), user.ID, missedFrom, missedTo, today)
 	if err != nil {
@@ -167,7 +162,7 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 	}
 	groupIdx := map[string]int{}
 	for _, occ := range missedRange {
-		if occ.Status != services.StatusMissed {
+		if !showInMissedSection(occ) {
 			continue
 		}
 		key := occ.DueDate.Format("2006-01-02")
@@ -183,6 +178,25 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 		view.Missed[idx].Rows = append(view.Missed[idx].Rows, rowFromOccurrence(occ, csrfToken))
 	}
 	return view, nil
+}
+
+func saturdayWeekStart(day time.Time) time.Time {
+	day = dateOnly(day)
+	daysSinceSaturday := (int(day.Weekday()) - int(time.Saturday) + 7) % 7
+	return day.AddDate(0, 0, -daysSinceSaturday)
+}
+
+func showInMissedSection(occ services.TaskOccurrence) bool {
+	if occ.Status == services.StatusMissed {
+		return true
+	}
+	if occ.Status != services.StatusCompleted {
+		return false
+	}
+
+	completed := occ.CompletedAt.In(services.AppLocation)
+	completedDate := time.Date(completed.Year(), completed.Month(), completed.Day(), 0, 0, 0, 0, time.UTC)
+	return completedDate.After(dateOnly(occ.DueDate))
 }
 
 func rowFromOccurrence(occ services.TaskOccurrence, csrfToken string) taskRowView {

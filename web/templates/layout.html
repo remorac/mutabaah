@@ -22,6 +22,11 @@
         var(--color-base-100);
     }
 
+    .mobile-navbar {
+      background: color-mix(in oklab, var(--color-base-100) 96%, var(--color-primary) 4%);
+      border-bottom: 1px solid color-mix(in oklab, var(--color-base-300) 72%, transparent);
+    }
+
     .sidebar-nav.menu li > a[data-nav-link] {
       display: flex;
       align-items: center;
@@ -63,7 +68,7 @@
     <input id="app-drawer" type="checkbox" class="drawer-toggle" />
 
     <div class="drawer-content flex flex-col min-h-screen">
-      <div class="navbar bg-base-100/95 shadow-sm backdrop-blur lg:hidden">
+      <div class="mobile-navbar navbar shadow-sm backdrop-blur lg:hidden">
         <div class="flex-none">
           <label for="app-drawer" class="btn btn-square btn-ghost" aria-label="Open menu">
             <i data-lucide="menu" class="w-5 h-5"></i>
