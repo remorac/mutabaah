@@ -24,7 +24,7 @@ func main() {
 	_ = godotenv.Load()
 
 	adminEmail := flag.String("email", "admin@example.com", "admin email")
-	adminPassword := flag.String("password", "changeme-admin-12345", "admin password (>= 12 chars recommended)")
+	adminPassword := flag.String("password", "changeme-admin-12345", "admin password (>= 8 chars recommended)")
 	adminName := flag.String("name", "Admin", "admin display name")
 	flag.Parse()
 

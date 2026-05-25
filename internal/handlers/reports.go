@@ -158,7 +158,8 @@ func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 	if err != nil {
 		return reportData{}, err
 	}
-	selectedUsers, options, hasSelectedUser := selectedReportUsers(allUsers, r.URL.Query()["user_id"])
+	current, _ := apmw.UserFromContext(r.Context())
+	selectedUsers, options, hasSelectedUser := selectedReportUsers(allUsers, r.URL.Query()["user_id"], current.ID)
 	var selectedUserName string
 	if len(selectedUsers) > 0 {
 		selectedUserName = selectedUsers[0].Name
@@ -258,7 +259,7 @@ func parseReportMonth(s string, fallback time.Time) (time.Time, string) {
 	return start, start.Format("2006-01")
 }
 
-func selectedReportUsers(all []repository.User, raw []string) ([]repository.User, []reportUserOption, bool) {
+func selectedReportUsers(all []repository.User, raw []string, fallbackID int64) ([]repository.User, []reportUserOption, bool) {
 	var selectedID int64
 	for _, s := range raw {
 		id, err := strconv.ParseInt(s, 10, 64)
@@ -266,6 +267,9 @@ func selectedReportUsers(all []repository.User, raw []string) ([]repository.User
 			selectedID = id
 			break
 		}
+	}
+	if selectedID == 0 {
+		selectedID = fallbackID
 	}
 
 	selected := make([]repository.User, 0, len(all))

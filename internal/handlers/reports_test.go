@@ -144,15 +144,23 @@ func TestSelectedReportUsers(t *testing.T) {
 		{ID: 2, Name: "Bilal"},
 	}
 
-	selected, options, hasSelected := selectedReportUsers(users, nil)
+	selected, options, hasSelected := selectedReportUsers(users, nil, 1)
+	if !hasSelected || len(selected) != 1 || selected[0].ID != 1 {
+		t.Fatalf("empty user filter selected %+v hasSelected=%v, want fallback Amina", selected, hasSelected)
+	}
+	if !options[0].Selected || options[1].Selected {
+		t.Fatalf("options = %+v, want fallback Amina selected", options)
+	}
+
+	selected, options, hasSelected = selectedReportUsers(users, nil, 99)
 	if hasSelected || len(selected) != 0 {
-		t.Fatalf("empty user filter selected %d hasSelected=%v, want no users", len(selected), hasSelected)
+		t.Fatalf("unknown fallback selected %d hasSelected=%v, want no users", len(selected), hasSelected)
 	}
 	if options[0].Selected || options[1].Selected {
 		t.Fatalf("options = %+v, want no single selected option", options)
 	}
 
-	selected, options, hasSelected = selectedReportUsers(users, []string{"2"})
+	selected, options, hasSelected = selectedReportUsers(users, []string{"2"}, 1)
 	if !hasSelected || len(selected) != 1 || selected[0].ID != 2 {
 		t.Fatalf("selected = %+v hasSelected=%v, want only Bilal", selected, hasSelected)
 	}

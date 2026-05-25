@@ -51,15 +51,15 @@
             </select>
           </label>
 
-          <div class="flex flex-wrap items-center gap-3">
-            <button type="submit" class="btn btn-primary">
-              <i data-lucide="filter" class="w-4 h-4"></i>
-              Apply
-            </button>
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <label class="label cursor-pointer gap-3 px-0">
               <input type="checkbox" name="group_by_tasks" value="1" class="checkbox checkbox-primary" {{if .GroupByTasks}}checked{{end}} />
               <span class="label-text">Group by tasks</span>
             </label>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="filter" class="w-4 h-4"></i>
+              Apply
+            </button>
           </div>
         </form>
 

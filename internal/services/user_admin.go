@@ -20,8 +20,8 @@ var ErrUserNotFound = errors.New("user not found")
 // admin user (deleting the last admin, or demoting them to a regular user).
 var ErrLastAdmin = errors.New("cannot remove the last admin")
 
-// MinPasswordLength enforces the spec's "min 12 chars" rule.
-const MinPasswordLength = 12
+// MinPasswordLength enforces the minimum accepted password length.
+const MinPasswordLength = 8
 
 // UserInput is the payload accepted by user create/update. Password is required
 // on Create and optional on Update — leave blank to keep the existing hash.
@@ -255,7 +255,7 @@ func validatePassword(pw string) string {
 		return "Password is required."
 	}
 	if len(pw) < MinPasswordLength {
-		return "Password must be at least 12 characters."
+		return "Password must be at least 8 characters."
 	}
 	return ""
 }

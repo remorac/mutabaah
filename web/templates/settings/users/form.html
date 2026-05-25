@@ -64,10 +64,10 @@
           Password
           {{if not .IsNew}}<span class="font-normal opacity-60">(leave blank to keep current)</span>{{end}}
         </span>
-        <input type="password" name="password" {{if .IsNew}}required{{end}} minlength="12" autocomplete="new-password"
+        <input type="password" name="password" {{if .IsNew}}required{{end}} minlength="8" autocomplete="new-password"
           class="input input-bordered w-full {{if index .Errors "password"}}input-error{{end}}" />
         {{with index .Errors "password"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
-        <span class="text-xs opacity-60 mt-1">At least 12 characters.</span>
+        <span class="text-xs opacity-60 mt-1">At least 8 characters.</span>
       </label>
 
       <div class="card-actions flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-3 border-t border-base-200">

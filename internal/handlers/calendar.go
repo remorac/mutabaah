@@ -44,6 +44,7 @@ type calendarGridView struct {
 	PrevMonth  string // YYYY-MM
 	NextMonth  string // YYYY-MM
 	TodayMonth string // YYYY-MM
+	Selected   string // YYYY-MM-DD
 	Weekdays   []string
 	Weeks      [][]calendarCellView
 }
@@ -51,6 +52,7 @@ type calendarGridView struct {
 type calendarPageView struct {
 	BaseView
 	Grid calendarGridView
+	Day  calendarDayView
 }
 
 type calendarDayTaskView struct {
@@ -84,6 +86,11 @@ func (h *CalendarHandler) Month(w http.ResponseWriter, r *http.Request) {
 		h.errs.ServerError(w, r, err)
 		return
 	}
+	day, err := h.buildDay(r, user.ID, today, today)
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
 
 	data := calendarPageView{
 		BaseView: BaseView{
@@ -93,6 +100,7 @@ func (h *CalendarHandler) Month(w http.ResponseWriter, r *http.Request) {
 			CSRFToken: token,
 		},
 		Grid: grid,
+		Day:  day,
 	}
 	if err := h.tmpl.Render(w, "calendar/index.html", data); err != nil {
 		h.errs.ServerError(w, r, err)
@@ -113,12 +121,26 @@ func (h *CalendarHandler) Day(w http.ResponseWriter, r *http.Request) {
 	date = dateOnly(date)
 
 	today := todayFor(h.now)
-	occs, err := h.tasks.OccurrencesOnAsOf(r.Context(), user.ID, date, today)
+	view, err := h.buildDay(r, user.ID, date, today)
 	if err != nil {
 		h.errs.ServerError(w, r, err)
 		return
 	}
 
+	if err := h.tmpl.RenderPartial(w, "calendar/_day.html", view); err != nil {
+		h.errs.ServerError(w, r, err)
+	}
+}
+
+func (h *CalendarHandler) buildDay(r *http.Request, userID int64, date, today time.Time) (calendarDayView, error) {
+	occs, err := h.tasks.OccurrencesOnAsOf(r.Context(), userID, date, today)
+	if err != nil {
+		return calendarDayView{}, err
+	}
+	return calendarDayFromOccurrences(date, occs), nil
+}
+
+func calendarDayFromOccurrences(date time.Time, occs []services.TaskOccurrence) calendarDayView {
 	view := calendarDayView{
 		Date:      date.Format("2006-01-02"),
 		DateLabel: date.Format("Mon, 02 Jan 2006"),
@@ -140,10 +162,7 @@ func (h *CalendarHandler) Day(w http.ResponseWriter, r *http.Request) {
 			view.Completed++
 		}
 	}
-
-	if err := h.tmpl.RenderPartial(w, "calendar/_day.html", view); err != nil {
-		h.errs.ServerError(w, r, err)
-	}
+	return view
 }
 
 func (h *CalendarHandler) buildGrid(r *http.Request, userID int64, month, today time.Time) (calendarGridView, error) {
@@ -183,6 +202,7 @@ func (h *CalendarHandler) buildGrid(r *http.Request, userID int64, month, today 
 		PrevMonth:  prev.Format("2006-01"),
 		NextMonth:  next.Format("2006-01"),
 		TodayMonth: today.Format("2006-01"),
+		Selected:   today.Format("2006-01-02"),
 		Weekdays:   []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},
 	}
 

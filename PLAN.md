@@ -197,7 +197,7 @@ A phased plan for building the Mutaba'ah Tracker per [specification.txt](specifi
 - [x] `GET /settings/users/:id/edit` and `POST /settings/users/:id`
 - [x] `POST /settings/users/:id/delete` — guard against deleting last admin (also blocks self-delete and demote-of-last-admin)
 - [x] User "profile" page for self-service password change (`GET/POST /settings/profile`) ([internal/handlers/profile.go](internal/handlers/profile.go)) — revokes all sessions on success
-- [x] Validation: email format, password strength (min 12 chars), unique email ([internal/services/user_admin.go](internal/services/user_admin.go))
+- [x] Validation: email format, password strength (min 8 chars), unique email ([internal/services/user_admin.go](internal/services/user_admin.go))
 
 **Deliverable:** Admin manages users; users can change their own password.
 

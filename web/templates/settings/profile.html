@@ -34,15 +34,15 @@
 
       <label class="block">
         <span class="label-text font-medium block mb-3">New password</span>
-        <input type="password" name="new_password" required minlength="12" autocomplete="new-password"
+        <input type="password" name="new_password" required minlength="8" autocomplete="new-password"
           class="input input-bordered w-full {{if index .Errors " new_password"}}input-error{{end}}" />
         {{with index .Errors "new_password"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
-        <span class="text-xs opacity-60 mt-1">At least 12 characters.</span>
+        <span class="text-xs opacity-60 mt-1">At least 8 characters.</span>
       </label>
 
       <label class="block">
         <span class="label-text font-medium block mb-3">Confirm new password</span>
-        <input type="password" name="confirm_password" required minlength="12" autocomplete="new-password"
+        <input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"
           class="input input-bordered w-full {{if index .Errors " confirm_password"}}input-error{{end}}" />
         {{with index .Errors "confirm_password"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
       </label>

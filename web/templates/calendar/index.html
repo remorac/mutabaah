@@ -31,7 +31,8 @@
               class="aspect-square rounded-md border border-base-200 p-1.5 text-left transition hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary {{if not .InMonth}}opacity-40{{end}} {{if .IsToday}}ring-2 ring-primary{{end}} {{.IntensityCls}}"
               hx-get="/calendar/day?date={{.Date}}"
               hx-target="#calendar-day-panel"
-              hx-swap="innerHTML">
+              hx-swap="innerHTML"
+              aria-pressed="{{if eq .Date $.Grid.Selected}}true{{else}}false{{end}}">
               <div class="flex items-start justify-between">
                 <span class="text-xs font-semibold">{{.DayNum}}</span>
                 {{if gt .Total 0}}
@@ -45,12 +46,7 @@
     </div>
 
     <div id="calendar-day-panel" class="card bg-base-100 shadow-sm">
-      <div class="card-body">
-        <p class="opacity-60 text-sm flex items-center gap-2">
-          <i data-lucide="mouse-pointer-click" class="w-4 h-4"></i>
-          Select a day to see its tasks.
-        </p>
-      </div>
+      {{template "_day.html" .Day}}
     </div>
 
   </div>
