@@ -11,7 +11,9 @@
     <div class="min-w-0">
       <div class="font-medium truncate">{{.Title}}</div>
       <div class="text-xs opacity-60 flex flex-wrap gap-2 items-center">
+        {{if ne .Frequency "daily"}}
         <span class="badge badge-outline badge-sm">{{.Frequency}}</span>
+        {{end}}
         {{if .Description}}<span>{{.Description}}</span>{{end}}
       </div>
     </div>

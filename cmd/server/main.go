@@ -121,6 +121,7 @@ func main() {
 		r.Post("/settings/tasks", settingsTasksHandler.Create)
 		r.Get("/settings/tasks/{id}/edit", settingsTasksHandler.EditForm)
 		r.Post("/settings/tasks/{id}", settingsTasksHandler.Update)
+		r.Post("/settings/tasks/{id}/active", settingsTasksHandler.SetActive)
 		r.Post("/settings/tasks/{id}/delete", settingsTasksHandler.Delete)
 		r.Post("/settings/tasks/{id}/move-up", settingsTasksHandler.MoveUp)
 		r.Post("/settings/tasks/{id}/move-down", settingsTasksHandler.MoveDown)

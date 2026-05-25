@@ -302,6 +302,31 @@ func (h *SettingsTasksHandler) MoveDown(w http.ResponseWriter, r *http.Request) 
 	h.move(w, r, 1)
 }
 
+// SetActive activates or deactivates a task without deleting completion history.
+func (h *SettingsTasksHandler) SetActive(w http.ResponseWriter, r *http.Request) {
+	user, _ := apmw.UserFromContext(r.Context())
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	active := r.PostFormValue("active") == "true" || r.PostFormValue("active") == "on"
+	if err := h.admin.SetActive(r.Context(), id, active); err != nil {
+		if errors.Is(err, services.ErrTaskNotFound) {
+			h.errs.NotFound(w, r)
+			return
+		}
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	h.logger.Info("task active status changed", "id", id, "active", active, "by", user.ID)
+	redirect := "/settings/tasks"
+	if q := r.URL.RawQuery; q != "" {
+		redirect += "?" + q
+	}
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
+}
+
 func (h *SettingsTasksHandler) move(w http.ResponseWriter, r *http.Request, delta int) {
 	user, _ := apmw.UserFromContext(r.Context())
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)

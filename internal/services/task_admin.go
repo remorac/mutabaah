@@ -180,6 +180,18 @@ func (s *TaskAdminService) Delete(ctx context.Context, id int64) error {
 	return s.q.DeleteTask(ctx, id)
 }
 
+// SetActive flips a task's active flag without touching its completion
+// history. Use this to hide a task from users while keeping past records.
+func (s *TaskAdminService) SetActive(ctx context.Context, id int64, active bool) error {
+	if _, err := s.q.GetTask(ctx, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrTaskNotFound
+		}
+		return err
+	}
+	return s.q.SetTaskActive(ctx, repository.SetTaskActiveParams{ID: id, Active: active})
+}
+
 func (s *TaskAdminService) validateAndBuild(in TaskInput) (repository.CreateTaskParams, error) {
 	verrs := map[string]string{}
 	title := strings.TrimSpace(in.Title)

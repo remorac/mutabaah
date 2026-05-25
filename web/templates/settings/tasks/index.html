@@ -63,17 +63,31 @@
               </td>
               <td class="text-right whitespace-nowrap">
                 <div class="inline-flex items-center gap-1">
-                  <form method="POST" action="/settings/tasks/{{.ID}}/move-up" class="inline">
+                  <form method="POST" action="/settings/tasks/{{.ID}}/move-up{{if $.Search}}?q={{urlquery $.Search}}{{end}}" class="inline">
                     <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
                     <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move up" {{if .IsFirst}}disabled{{end}}>
                       <i data-lucide="arrow-up" class="w-4 h-4"></i>
                     </button>
                   </form>
-                  <form method="POST" action="/settings/tasks/{{.ID}}/move-down" class="inline">
+                  <form method="POST" action="/settings/tasks/{{.ID}}/move-down{{if $.Search}}?q={{urlquery $.Search}}{{end}}" class="inline">
                     <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
                     <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move down" {{if .IsLast}}disabled{{end}}>
                       <i data-lucide="arrow-down" class="w-4 h-4"></i>
                     </button>
+                  </form>
+                  <form method="POST" action="/settings/tasks/{{.ID}}/active{{if $.Search}}?q={{urlquery $.Search}}{{end}}" class="inline">
+                    <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
+                    {{if .Active}}
+                    <input type="hidden" name="active" value="false" />
+                    <button type="submit" class="btn btn-ghost btn-xs" aria-label="Deactivate task" title="Deactivate">
+                      <i data-lucide="pause" class="w-4 h-4"></i>
+                    </button>
+                    {{else}}
+                    <input type="hidden" name="active" value="true" />
+                    <button type="submit" class="btn btn-ghost btn-xs" aria-label="Activate task" title="Activate">
+                      <i data-lucide="play" class="w-4 h-4"></i>
+                    </button>
+                    {{end}}
                   </form>
                   <a href="/settings/tasks/{{.ID}}/edit" class="btn btn-ghost btn-xs">
                     <i data-lucide="pencil" class="w-4 h-4"></i>

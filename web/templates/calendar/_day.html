@@ -15,19 +15,23 @@
   {{if .Tasks}}
   <ul class="flex flex-col mt-2">
     {{range .Tasks}}
-    <li class="flex items-center gap-3 py-2 border-b border-base-200 last:border-b-0">
-      {{if eq .Status "completed"}}
-        <i data-lucide="check-circle" class="w-5 h-5 text-success shrink-0"></i>
-      {{else if eq .Status "missed"}}
-        <i data-lucide="x-circle" class="w-5 h-5 text-error shrink-0"></i>
-      {{else}}
-        <i data-lucide="circle" class="w-5 h-5 opacity-50 shrink-0"></i>
-      {{end}}
-      <div class="min-w-0">
-        <div class="font-medium truncate">{{.Title}}</div>
-        <div class="text-xs opacity-60 flex flex-wrap gap-2 items-center">
-          {{if .Description}}<span>{{.Description}}</span>{{end}}
-          <span class="badge badge-outline badge-sm">{{.Frequency}}</span>
+    <li class="flex items-center justify-between gap-3 py-2 border-b border-base-200 last:border-b-0">
+      <div class="flex items-center gap-3 min-w-0">
+        {{if eq .Status "completed"}}
+          <i data-lucide="check-circle" class="w-5 h-5 text-success shrink-0"></i>
+        {{else if eq .Status "missed"}}
+          <i data-lucide="x-circle" class="w-5 h-5 text-error shrink-0"></i>
+        {{else}}
+          <i data-lucide="circle" class="w-5 h-5 opacity-50 shrink-0"></i>
+        {{end}}
+        <div class="min-w-0">
+          <div class="font-medium truncate">{{.Title}}</div>
+          <div class="text-xs opacity-60 flex flex-wrap gap-2 items-center">
+            {{if ne .Frequency "daily"}}
+            <span class="badge badge-outline badge-sm">{{.Frequency}}</span>
+            {{end}}
+            {{if .Description}}<span>{{.Description}}</span>{{end}}
+          </div>
         </div>
       </div>
     </li>
