@@ -13,7 +13,7 @@ import (
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/aldoerianda/tracker/internal/repository"
+	"github.com/remorac/mutabaah/internal/repository"
 )
 
 // Seeds an admin user and a starter set of tasks (fard salah ×5, dhikr, weekly

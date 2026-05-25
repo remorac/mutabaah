@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	apmw "github.com/aldoerianda/tracker/internal/middleware"
-	"github.com/aldoerianda/tracker/internal/services"
+	apmw "github.com/remorac/mutabaah/internal/middleware"
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 // AuthHandler renders the login view and processes login/logout POSTs.

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	apmw "github.com/aldoerianda/tracker/internal/middleware"
+	apmw "github.com/remorac/mutabaah/internal/middleware"
 )
 
 // ErrorPages renders the styled 404/403/500 pages. Falls back to plain text

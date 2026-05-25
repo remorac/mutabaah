@@ -97,6 +97,15 @@ func (ns NullUsersRole) Value() (driver.Value, error) {
 	return string(ns.UsersRole), nil
 }
 
+type MensesPeriod struct {
+	ID        int64        `json:"id"`
+	UserID    int64        `json:"user_id"`
+	StartDate time.Time    `json:"start_date"`
+	EndDate   sql.NullTime `json:"end_date"`
+	CreatedAt time.Time    `json:"created_at"`
+	UpdatedAt time.Time    `json:"updated_at"`
+}
+
 type Session struct {
 	ID        string    `json:"id"`
 	UserID    int64     `json:"user_id"`
@@ -105,16 +114,17 @@ type Session struct {
 }
 
 type Task struct {
-	ID          int64          `json:"id"`
-	Title       string         `json:"title"`
-	Frequency   TasksFrequency `json:"frequency"`
-	StartDate   time.Time      `json:"start_date"`
-	EndDate     sql.NullTime   `json:"end_date"`
-	Active      bool           `json:"active"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	Sequence    int32          `json:"sequence"`
-	Description sql.NullString `json:"description"`
+	ID                 int64          `json:"id"`
+	Title              string         `json:"title"`
+	Frequency          TasksFrequency `json:"frequency"`
+	StartDate          time.Time      `json:"start_date"`
+	EndDate            sql.NullTime   `json:"end_date"`
+	Active             bool           `json:"active"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
+	Sequence           int32          `json:"sequence"`
+	Description        sql.NullString `json:"description"`
+	ExemptDuringMenses bool           `json:"exempt_during_menses"`
 }
 
 type TaskCompletion struct {

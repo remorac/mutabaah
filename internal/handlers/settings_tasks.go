@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	apmw "github.com/aldoerianda/tracker/internal/middleware"
-	"github.com/aldoerianda/tracker/internal/repository"
-	"github.com/aldoerianda/tracker/internal/services"
+	apmw "github.com/remorac/mutabaah/internal/middleware"
+	"github.com/remorac/mutabaah/internal/repository"
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 // SettingsTasksHandler renders admin task CRUD pages. All routes mounted under
@@ -48,18 +48,19 @@ type taskListView struct {
 
 type taskFormView struct {
 	BaseView
-	IsNew       bool
-	FormAction  string
-	DeleteURL   string
-	Errors      map[string]string
-	Title       string
-	Description string
-	Frequency   string
-	StartDate   string
-	EndDate     string
-	Active      bool
-	Sequence    string
-	Frequencies []string
+	IsNew              bool
+	FormAction         string
+	DeleteURL          string
+	Errors             map[string]string
+	Title              string
+	Description        string
+	Frequency          string
+	StartDate          string
+	EndDate            string
+	Active             bool
+	ExemptDuringMenses bool
+	Sequence           string
+	Frequencies        []string
 }
 
 // List renders the settings/tasks index.
@@ -159,17 +160,18 @@ func (h *SettingsTasksHandler) Create(w http.ResponseWriter, r *http.Request) {
 					UserRole:  string(user.Role),
 					CSRFToken: token,
 				},
-				IsNew:       true,
-				FormAction:  "/settings/tasks",
-				Errors:      ve.Fields,
-				Title:       input.Title,
-				Description: input.Description,
-				Frequency:   input.Frequency,
-				StartDate:   input.StartDate,
-				EndDate:     input.EndDate,
-				Active:      input.Active,
-				Sequence:    input.Sequence,
-				Frequencies: allFrequencies(),
+				IsNew:              true,
+				FormAction:         "/settings/tasks",
+				Errors:             ve.Fields,
+				Title:              input.Title,
+				Description:        input.Description,
+				Frequency:          input.Frequency,
+				StartDate:          input.StartDate,
+				EndDate:            input.EndDate,
+				Active:             input.Active,
+				ExemptDuringMenses: input.ExemptDuringMenses,
+				Sequence:           input.Sequence,
+				Frequencies:        allFrequencies(),
 			})
 			return
 		}
@@ -216,17 +218,18 @@ func (h *SettingsTasksHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 			UserRole:  string(user.Role),
 			CSRFToken: token,
 		},
-		IsNew:       false,
-		FormAction:  "/settings/tasks/" + strconv.FormatInt(id, 10),
-		DeleteURL:   "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",
-		Title:       t.Title,
-		Description: desc,
-		Frequency:   string(t.Frequency),
-		StartDate:   t.StartDate.Format("2006-01-02"),
-		EndDate:     end,
-		Active:      t.Active,
-		Sequence:    strconv.FormatInt(int64(t.Sequence), 10),
-		Frequencies: allFrequencies(),
+		IsNew:              false,
+		FormAction:         "/settings/tasks/" + strconv.FormatInt(id, 10),
+		DeleteURL:          "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",
+		Title:              t.Title,
+		Description:        desc,
+		Frequency:          string(t.Frequency),
+		StartDate:          t.StartDate.Format("2006-01-02"),
+		EndDate:            end,
+		Active:             t.Active,
+		ExemptDuringMenses: t.ExemptDuringMenses,
+		Sequence:           strconv.FormatInt(int64(t.Sequence), 10),
+		Frequencies:        allFrequencies(),
 	}
 	if err := h.tmpl.Render(w, "settings/tasks/form.html", view); err != nil {
 		h.logger.Error("render edit form", "err", err)
@@ -260,18 +263,19 @@ func (h *SettingsTasksHandler) Update(w http.ResponseWriter, r *http.Request) {
 					UserRole:  string(user.Role),
 					CSRFToken: token,
 				},
-				IsNew:       false,
-				FormAction:  "/settings/tasks/" + strconv.FormatInt(id, 10),
-				DeleteURL:   "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",
-				Errors:      ve.Fields,
-				Title:       input.Title,
-				Description: input.Description,
-				Frequency:   input.Frequency,
-				StartDate:   input.StartDate,
-				EndDate:     input.EndDate,
-				Active:      input.Active,
-				Sequence:    input.Sequence,
-				Frequencies: allFrequencies(),
+				IsNew:              false,
+				FormAction:         "/settings/tasks/" + strconv.FormatInt(id, 10),
+				DeleteURL:          "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",
+				Errors:             ve.Fields,
+				Title:              input.Title,
+				Description:        input.Description,
+				Frequency:          input.Frequency,
+				StartDate:          input.StartDate,
+				EndDate:            input.EndDate,
+				Active:             input.Active,
+				ExemptDuringMenses: input.ExemptDuringMenses,
+				Sequence:           input.Sequence,
+				Frequencies:        allFrequencies(),
 			})
 			return
 		}
@@ -374,13 +378,14 @@ func (h *SettingsTasksHandler) renderFormError(w http.ResponseWriter, _ *http.Re
 
 func parseTaskInput(r *http.Request) services.TaskInput {
 	return services.TaskInput{
-		Title:       r.PostFormValue("title"),
-		Description: strings.TrimSpace(r.PostFormValue("description")),
-		Frequency:   r.PostFormValue("frequency"),
-		StartDate:   r.PostFormValue("start_date"),
-		EndDate:     r.PostFormValue("end_date"),
-		Active:      r.PostFormValue("active") == "on" || r.PostFormValue("active") == "true",
-		Sequence:    strings.TrimSpace(r.PostFormValue("sequence")),
+		Title:              r.PostFormValue("title"),
+		Description:        strings.TrimSpace(r.PostFormValue("description")),
+		Frequency:          r.PostFormValue("frequency"),
+		StartDate:          r.PostFormValue("start_date"),
+		EndDate:            r.PostFormValue("end_date"),
+		Active:             r.PostFormValue("active") == "on" || r.PostFormValue("active") == "true",
+		ExemptDuringMenses: r.PostFormValue("exempt_during_menses") == "on" || r.PostFormValue("exempt_during_menses") == "true",
+		Sequence:           strings.TrimSpace(r.PostFormValue("sequence")),
 	}
 }
 

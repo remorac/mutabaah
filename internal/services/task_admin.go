@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aldoerianda/tracker/internal/repository"
+	"github.com/remorac/mutabaah/internal/repository"
 )
 
 // ErrTaskNotFound is returned when a task lookup misses.
@@ -33,13 +33,14 @@ func (e *ValidationError) Error() string {
 // TaskInput is the payload accepted by Create/Update. Strings should already
 // be trimmed by the caller; the service validates and applies defaults.
 type TaskInput struct {
-	Title       string
-	Description string
-	Frequency   string
-	StartDate   string // YYYY-MM-DD
-	EndDate     string // YYYY-MM-DD or ""
-	Active      bool
-	Sequence    string // integer as string; defaults to 0
+	Title              string
+	Description        string
+	Frequency          string
+	StartDate          string // YYYY-MM-DD
+	EndDate            string // YYYY-MM-DD or ""
+	Active             bool
+	ExemptDuringMenses bool
+	Sequence           string // integer as string; defaults to 0
 }
 
 // TaskAdminService implements admin-side task CRUD with validation.
@@ -90,14 +91,15 @@ func (s *TaskAdminService) Update(ctx context.Context, id int64, in TaskInput) e
 		return err
 	}
 	return s.q.UpdateTask(ctx, repository.UpdateTaskParams{
-		Title:       params.Title,
-		Description: params.Description,
-		Frequency:   params.Frequency,
-		StartDate:   params.StartDate,
-		EndDate:     params.EndDate,
-		Active:      params.Active,
-		Sequence:    params.Sequence,
-		ID:          id,
+		Title:              params.Title,
+		Description:        params.Description,
+		Frequency:          params.Frequency,
+		StartDate:          params.StartDate,
+		EndDate:            params.EndDate,
+		Active:             params.Active,
+		ExemptDuringMenses: params.ExemptDuringMenses,
+		Sequence:           params.Sequence,
+		ID:                 id,
 	})
 }
 
@@ -226,12 +228,13 @@ func (s *TaskAdminService) validateAndBuild(in TaskInput) (repository.CreateTask
 	}
 
 	return repository.CreateTaskParams{
-		Title:       title,
-		Description: nullDesc,
-		Frequency:   freq,
-		StartDate:   start,
-		EndDate:     end,
-		Active:      in.Active,
-		Sequence:    seq,
+		Title:              title,
+		Description:        nullDesc,
+		Frequency:          freq,
+		StartDate:          start,
+		EndDate:            end,
+		Active:             in.Active,
+		ExemptDuringMenses: in.ExemptDuringMenses,
+		Sequence:           seq,
 	}, nil
 }

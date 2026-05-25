@@ -12,18 +12,19 @@ import (
 )
 
 const createTask = `-- name: CreateTask :execlastid
-INSERT INTO tasks (title, frequency, start_date, end_date, active, sequence, description)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tasks (title, frequency, start_date, end_date, active, sequence, description, exempt_during_menses)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateTaskParams struct {
-	Title       string         `json:"title"`
-	Frequency   TasksFrequency `json:"frequency"`
-	StartDate   time.Time      `json:"start_date"`
-	EndDate     sql.NullTime   `json:"end_date"`
-	Active      bool           `json:"active"`
-	Sequence    int32          `json:"sequence"`
-	Description sql.NullString `json:"description"`
+	Title              string         `json:"title"`
+	Frequency          TasksFrequency `json:"frequency"`
+	StartDate          time.Time      `json:"start_date"`
+	EndDate            sql.NullTime   `json:"end_date"`
+	Active             bool           `json:"active"`
+	Sequence           int32          `json:"sequence"`
+	Description        sql.NullString `json:"description"`
+	ExemptDuringMenses bool           `json:"exempt_during_menses"`
 }
 
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (int64, error) {
@@ -35,6 +36,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (int64, 
 		arg.Active,
 		arg.Sequence,
 		arg.Description,
+		arg.ExemptDuringMenses,
 	)
 	if err != nil {
 		return 0, err
@@ -52,7 +54,7 @@ func (q *Queries) DeleteTask(ctx context.Context, id int64) error {
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description
+SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description, exempt_during_menses
 FROM tasks
 WHERE id = ?
 `
@@ -71,12 +73,13 @@ func (q *Queries) GetTask(ctx context.Context, id int64) (Task, error) {
 		&i.UpdatedAt,
 		&i.Sequence,
 		&i.Description,
+		&i.ExemptDuringMenses,
 	)
 	return i, err
 }
 
 const listActiveTasks = `-- name: ListActiveTasks :many
-SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description
+SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description, exempt_during_menses
 FROM tasks
 WHERE active = TRUE
 ORDER BY sequence ASC, created_at DESC
@@ -102,6 +105,7 @@ func (q *Queries) ListActiveTasks(ctx context.Context) ([]Task, error) {
 			&i.UpdatedAt,
 			&i.Sequence,
 			&i.Description,
+			&i.ExemptDuringMenses,
 		); err != nil {
 			return nil, err
 		}
@@ -117,7 +121,7 @@ func (q *Queries) ListActiveTasks(ctx context.Context) ([]Task, error) {
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description
+SELECT id, title, frequency, start_date, end_date, active, created_at, updated_at, sequence, description, exempt_during_menses
 FROM tasks
 ORDER BY sequence ASC, created_at DESC
 `
@@ -142,6 +146,7 @@ func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
 			&i.UpdatedAt,
 			&i.Sequence,
 			&i.Description,
+			&i.ExemptDuringMenses,
 		); err != nil {
 			return nil, err
 		}
@@ -186,19 +191,20 @@ func (q *Queries) SetTaskSequence(ctx context.Context, arg SetTaskSequenceParams
 
 const updateTask = `-- name: UpdateTask :exec
 UPDATE tasks
-SET title = ?, frequency = ?, start_date = ?, end_date = ?, active = ?, sequence = ?, description = ?
+SET title = ?, frequency = ?, start_date = ?, end_date = ?, active = ?, sequence = ?, description = ?, exempt_during_menses = ?
 WHERE id = ?
 `
 
 type UpdateTaskParams struct {
-	Title       string         `json:"title"`
-	Frequency   TasksFrequency `json:"frequency"`
-	StartDate   time.Time      `json:"start_date"`
-	EndDate     sql.NullTime   `json:"end_date"`
-	Active      bool           `json:"active"`
-	Sequence    int32          `json:"sequence"`
-	Description sql.NullString `json:"description"`
-	ID          int64          `json:"id"`
+	Title              string         `json:"title"`
+	Frequency          TasksFrequency `json:"frequency"`
+	StartDate          time.Time      `json:"start_date"`
+	EndDate            sql.NullTime   `json:"end_date"`
+	Active             bool           `json:"active"`
+	Sequence           int32          `json:"sequence"`
+	Description        sql.NullString `json:"description"`
+	ExemptDuringMenses bool           `json:"exempt_during_menses"`
+	ID                 int64          `json:"id"`
 }
 
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
@@ -210,6 +216,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
 		arg.Active,
 		arg.Sequence,
 		arg.Description,
+		arg.ExemptDuringMenses,
 		arg.ID,
 	)
 	return err

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/aldoerianda/tracker/internal/repository"
-	"github.com/aldoerianda/tracker/internal/services"
+	"github.com/remorac/mutabaah/internal/repository"
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 // SessionCookieName is the name of the cookie that carries the session token.

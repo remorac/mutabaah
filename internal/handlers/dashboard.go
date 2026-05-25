@@ -12,9 +12,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	apmw "github.com/aldoerianda/tracker/internal/middleware"
-	"github.com/aldoerianda/tracker/internal/repository"
-	"github.com/aldoerianda/tracker/internal/services"
+	apmw "github.com/remorac/mutabaah/internal/middleware"
+	"github.com/remorac/mutabaah/internal/repository"
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 // todayFor returns the app's "today" — the date component of now() evaluated
@@ -47,7 +47,7 @@ type taskRowView struct {
 	Description string
 	Frequency   string
 	DueDate     string // YYYY-MM-DD, used in the form action URL
-	Status      string // "pending" | "missed" | "completed"
+	Status      string // "pending" | "missed" | "completed" | "exempt"
 	CSRFToken   string
 	Section     string // "today" | "missed"
 	RowID       string
@@ -271,7 +271,7 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 	}
 	for _, occ := range todayOccs {
 		row := rowFromOccurrence(occ, csrfToken, "today")
-		if row.Status == "completed" {
+		if row.Status == "completed" || row.Status == "exempt" {
 			view.TodayDone = append(view.TodayDone, row)
 		} else {
 			view.TodayPending = append(view.TodayPending, row)
@@ -305,9 +305,12 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 func (h *DashboardHandler) computeStats(ctx context.Context, userID int64, today time.Time, todayOccs []services.TaskOccurrence) dashboardStatsView {
 	stats := dashboardStatsView{}
 
-	// Today stats
-	stats.TodayTotal = len(todayOccs)
+	// Today stats — exempt occurrences are excluded from numerator AND denominator.
 	for _, occ := range todayOccs {
+		if occ.Status == services.StatusExempt {
+			continue
+		}
+		stats.TodayTotal++
 		if occ.Status == services.StatusCompleted {
 			stats.TodayDone++
 		}
@@ -317,12 +320,15 @@ func (h *DashboardHandler) computeStats(ctx context.Context, userID int64, today
 		stats.TodayPct = (stats.TodayDone * 100) / stats.TodayTotal
 	}
 
-	// Weekly stats (Saturday to today inclusive)
+	// Weekly stats (Saturday to today inclusive) — also excludes exempt.
 	weekStart := saturdayWeekStart(today)
 	weekOccs, err := h.tasks.OccurrencesBetweenAsOf(ctx, userID, weekStart, today, today)
 	if err == nil {
-		stats.WeeklyTotal = len(weekOccs)
 		for _, occ := range weekOccs {
+			if occ.Status == services.StatusExempt {
+				continue
+			}
+			stats.WeeklyTotal++
 			if occ.Status == services.StatusCompleted {
 				stats.WeeklyDone++
 			}
@@ -347,7 +353,7 @@ func (h *DashboardHandler) computeStats(ctx context.Context, userID int64, today
 		}
 		allDone := true
 		for _, occ := range occs {
-			if occ.Status != services.StatusCompleted {
+			if occ.Status != services.StatusCompleted && occ.Status != services.StatusExempt {
 				allDone = false
 				break
 			}

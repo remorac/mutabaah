@@ -1,0 +1,2 @@
+ALTER TABLE tasks
+    ADD COLUMN exempt_during_menses BOOLEAN NOT NULL DEFAULT FALSE AFTER active;

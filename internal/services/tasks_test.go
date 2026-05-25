@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aldoerianda/tracker/internal/repository"
+	"github.com/remorac/mutabaah/internal/repository"
 )
 
 func date(y int, m time.Month, d int) time.Time {
@@ -112,7 +112,7 @@ func TestBuildOccurrences_StatusAssignment(t *testing.T) {
 	completions := []repository.TaskCompletion{
 		{TaskID: 1, UserID: 1, DueDate: date(2026, 5, 23), CompletedAt: date(2026, 5, 23)},
 	}
-	got := buildOccurrences([]repository.Task{tk}, completions, today, date(2026, 5, 23), date(2026, 5, 26))
+	got := buildOccurrences([]repository.Task{tk}, completions, nil, today, date(2026, 5, 23), date(2026, 5, 26))
 	if len(got) != 4 {
 		t.Fatalf("expected 4 occurrences, got %d", len(got))
 	}
@@ -129,7 +129,7 @@ func TestBuildOccurrences_SortedByDateThenTitle(t *testing.T) {
 	today := date(2026, 5, 25)
 	a := task(1, "zikr", repository.TasksFrequencyDaily, date(2026, 5, 25), nil)
 	b := task(2, "alfatihah", repository.TasksFrequencyDaily, date(2026, 5, 25), nil)
-	got := buildOccurrences([]repository.Task{a, b}, nil, today, date(2026, 5, 25), date(2026, 5, 25))
+	got := buildOccurrences([]repository.Task{a, b}, nil, nil, today, date(2026, 5, 25), date(2026, 5, 25))
 	if len(got) != 2 || got[0].Task.Title != "alfatihah" || got[1].Task.Title != "zikr" {
 		t.Fatalf("expected alfatihah before zikr, got %+v", got)
 	}

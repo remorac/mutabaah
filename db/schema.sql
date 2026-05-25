@@ -21,6 +21,7 @@ CREATE TABLE tasks (
     start_date  DATE         NOT NULL,
     end_date    DATE         NULL,
     active      BOOLEAN      NOT NULL DEFAULT TRUE,
+    exempt_during_menses BOOLEAN NOT NULL DEFAULT FALSE,
     sequence    INT          NOT NULL DEFAULT 0,
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -42,6 +43,18 @@ CREATE TABLE task_completions (
     KEY idx_task_completions_user_date (user_id, due_date),
     CONSTRAINT fk_task_completions_task FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
     CONSTRAINT fk_task_completions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE menses_periods (
+    id         BIGINT    NOT NULL AUTO_INCREMENT,
+    user_id    BIGINT    NOT NULL,
+    start_date DATE      NOT NULL,
+    end_date   DATE      NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_menses_periods_user_start (user_id, start_date),
+    CONSTRAINT fk_menses_periods_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE sessions (

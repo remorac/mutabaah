@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	apmw "github.com/aldoerianda/tracker/internal/middleware"
-	"github.com/aldoerianda/tracker/internal/repository"
-	"github.com/aldoerianda/tracker/internal/services"
+	apmw "github.com/remorac/mutabaah/internal/middleware"
+	"github.com/remorac/mutabaah/internal/repository"
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 type ReportHandler struct {
@@ -407,6 +407,9 @@ func buildWeeklyTaskReportBars(periodStart, periodEnd time.Time, sets []reportOc
 }
 
 func addOccurrence(bar *reportBarView, occ services.TaskOccurrence) {
+	if occ.Status == services.StatusExempt {
+		return
+	}
 	bar.Total++
 	if occ.Status == services.StatusCompleted {
 		bar.Completed++

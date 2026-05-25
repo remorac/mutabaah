@@ -16,11 +16,11 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
 
-	"github.com/aldoerianda/tracker/internal/config"
-	"github.com/aldoerianda/tracker/internal/handlers"
-	apmw "github.com/aldoerianda/tracker/internal/middleware"
-	"github.com/aldoerianda/tracker/internal/repository"
-	"github.com/aldoerianda/tracker/internal/services"
+	"github.com/remorac/mutabaah/internal/config"
+	"github.com/remorac/mutabaah/internal/handlers"
+	apmw "github.com/remorac/mutabaah/internal/middleware"
+	"github.com/remorac/mutabaah/internal/repository"
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 func main() {
@@ -58,6 +58,7 @@ func main() {
 	tasks := services.NewTaskService(queries)
 	taskAdmin := services.NewTaskAdminService(queries)
 	userAdmin := services.NewUserAdminService(queries)
+	mensesAdmin := services.NewMensesAdminService(queries)
 
 	tmpl, err := handlers.LoadTemplates("web/templates")
 	if err != nil {
@@ -72,7 +73,7 @@ func main() {
 	reportHandler := handlers.NewReportHandler(auth, tasks, userAdmin, tmpl, errorPages, logger)
 	settingsTasksHandler := handlers.NewSettingsTasksHandler(auth, taskAdmin, tmpl, errorPages, logger)
 	settingsUsersHandler := handlers.NewSettingsUsersHandler(auth, userAdmin, tmpl, errorPages, logger)
-	profileHandler := handlers.NewProfileHandler(auth, userAdmin, tmpl, errorPages, logger)
+	profileHandler := handlers.NewProfileHandler(auth, userAdmin, mensesAdmin, tmpl, errorPages, logger)
 
 	// Wire styled 403 into RequireAdmin (middleware can't import handlers).
 	apmw.ForbiddenHandler = errorPages.Forbidden
@@ -109,6 +110,8 @@ func main() {
 		r.Get("/calendar/day", calHandler.Day)
 		r.Get("/settings/profile", profileHandler.Show)
 		r.Post("/settings/profile", profileHandler.ChangePassword)
+		r.Post("/settings/periods", profileHandler.CreatePeriod)
+		r.Post("/settings/periods/{id}/delete", profileHandler.DeletePeriod)
 	})
 
 	r.Group(func(r chi.Router) {

@@ -12,6 +12,10 @@
     <span class="shrink-0 w-5 h-5 text-error grid place-items-center">
       <i data-lucide="circle-x" class="w-5 h-5"></i>
     </span>
+    {{else if eq .Status "exempt"}}
+    <span class="shrink-0 w-5 h-5 text-pink-500 grid place-items-center" title="Exempt during menses">
+      <i data-lucide="moon" class="w-5 h-5"></i>
+    </span>
     {{else}}
     <span
       class="shrink-0 w-5 h-5 rounded-full border-2 border-base-300 border-dashed opacity-60 grid place-items-center">
@@ -23,10 +27,14 @@
         {{if ne .Frequency "daily"}}
         <span class="badge badge-outline badge-sm font-normal">{{.Frequency}}</span>
         {{end}}
+        {{if eq .Status "exempt"}}
+        <span class="badge badge-sm bg-pink-100 text-pink-700 border-pink-200 font-normal">exempt</span>
+        {{end}}
         {{if .Description}}<span>{{.Description}}</span>{{end}}
       </div>
     </div>
   </div>
+  {{if ne .Status "exempt"}}
   <div class="shrink-0">
     {{if eq .Status "completed"}}
     <button type="button" class="btn btn-sm btn-ghost w-12 opacity-60 hover:opacity-100 transition-opacity"
@@ -42,5 +50,6 @@
     </button>
     {{end}}
   </div>
+  {{end}}
 </li>
 {{end}}

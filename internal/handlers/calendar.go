@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	apmw "github.com/aldoerianda/tracker/internal/middleware"
-	"github.com/aldoerianda/tracker/internal/services"
+	apmw "github.com/remorac/mutabaah/internal/middleware"
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 // CalendarHandler renders a monthly calendar grid and per-day detail panels.
@@ -144,7 +144,6 @@ func calendarDayFromOccurrences(date time.Time, occs []services.TaskOccurrence) 
 	view := calendarDayView{
 		Date:      date.Format("2006-01-02"),
 		DateLabel: date.Format("Mon, 02 Jan 2006"),
-		Total:     len(occs),
 	}
 	for _, occ := range occs {
 		var desc string
@@ -158,6 +157,10 @@ func calendarDayFromOccurrences(date time.Time, occs []services.TaskOccurrence) 
 			Frequency:   string(occ.Task.Frequency),
 			Status:      string(occ.Status),
 		})
+		if occ.Status == services.StatusExempt {
+			continue
+		}
+		view.Total++
 		if occ.Status == services.StatusCompleted {
 			view.Completed++
 		}
@@ -183,6 +186,9 @@ func (h *CalendarHandler) buildGrid(r *http.Request, userID int64, month, today 
 	type tally struct{ done, total int }
 	byDay := make(map[string]*tally, 42)
 	for _, occ := range occs {
+		if occ.Status == services.StatusExempt {
+			continue
+		}
 		k := occ.DueDate.Format("2006-01-02")
 		t, ok := byDay[k]
 		if !ok {

@@ -11,15 +11,18 @@ import (
 type Querier interface {
 	CountAdmins(ctx context.Context) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
+	CreateMensesPeriod(ctx context.Context, arg CreateMensesPeriodParams) (int64, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) error
 	CreateTask(ctx context.Context, arg CreateTaskParams) (int64, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (int64, error)
 	DeleteExpiredSessions(ctx context.Context) error
+	DeleteMensesPeriod(ctx context.Context, arg DeleteMensesPeriodParams) error
 	DeleteSession(ctx context.Context, id string) error
 	DeleteTask(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteUserSessions(ctx context.Context, userID int64) error
 	GetCompletion(ctx context.Context, arg GetCompletionParams) (TaskCompletion, error)
+	GetMensesPeriod(ctx context.Context, arg GetMensesPeriodParams) (MensesPeriod, error)
 	GetSession(ctx context.Context, id string) (Session, error)
 	GetTask(ctx context.Context, id int64) (Task, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -28,12 +31,15 @@ type Querier interface {
 	ListAllUsers(ctx context.Context) ([]User, error)
 	ListCompletionsForUserInRange(ctx context.Context, arg ListCompletionsForUserInRangeParams) ([]TaskCompletion, error)
 	ListCompletionsForUserOnDate(ctx context.Context, arg ListCompletionsForUserOnDateParams) ([]TaskCompletion, error)
+	ListMensesPeriodsForUser(ctx context.Context, userID int64) ([]MensesPeriod, error)
+	ListMensesPeriodsForUserInRange(ctx context.Context, arg ListMensesPeriodsForUserInRangeParams) ([]MensesPeriod, error)
 	ListTasks(ctx context.Context) ([]Task, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	MarkTaskComplete(ctx context.Context, arg MarkTaskCompleteParams) error
 	MarkTaskIncomplete(ctx context.Context, arg MarkTaskIncompleteParams) error
 	SetTaskActive(ctx context.Context, arg SetTaskActiveParams) error
 	SetTaskSequence(ctx context.Context, arg SetTaskSequenceParams) error
+	UpdateMensesPeriod(ctx context.Context, arg UpdateMensesPeriodParams) error
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aldoerianda/tracker/internal/repository"
-	"github.com/aldoerianda/tracker/internal/services"
+	"github.com/remorac/mutabaah/internal/repository"
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 func reportDate(y int, m time.Month, d int) time.Time {

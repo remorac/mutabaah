@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/aldoerianda/tracker/internal/repository"
+	"github.com/remorac/mutabaah/internal/repository"
 )
 
 // ErrTaskNotAvailable is returned when the task does not exist or is inactive.
@@ -25,6 +25,7 @@ const (
 	StatusPending   OccurrenceStatus = "pending"
 	StatusMissed    OccurrenceStatus = "missed"
 	StatusCompleted OccurrenceStatus = "completed"
+	StatusExempt    OccurrenceStatus = "exempt"
 )
 
 // TaskOccurrence is one scheduled instance of a task on a specific date,
@@ -88,8 +89,16 @@ func (s *TaskService) OccurrencesBetweenAsOf(ctx context.Context, userID int64, 
 	if err != nil {
 		return nil, err
 	}
+	periods, err := s.q.ListMensesPeriodsForUserInRange(ctx, repository.ListMensesPeriodsForUserInRangeParams{
+		UserID:   userID,
+		ToDate:   to,
+		FromDate: sql.NullTime{Time: from, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	return buildOccurrences(tasks, completions, dateOnly(today), from, to), nil
+	return buildOccurrences(tasks, completions, periods, dateOnly(today), from, to), nil
 }
 
 // Toggle flips the completion state for (taskID, userID, dueDate) and returns
@@ -180,7 +189,7 @@ func (s *TaskService) ToggleAsOf(ctx context.Context, taskID, userID int64, dueD
 // buildOccurrences is the pure core of the resolver: given task definitions,
 // any existing completion rows in the range, and "today", it produces the
 // final list of occurrences with their status assigned.
-func buildOccurrences(tasks []repository.Task, completions []repository.TaskCompletion, today, from, to time.Time) []TaskOccurrence {
+func buildOccurrences(tasks []repository.Task, completions []repository.TaskCompletion, periods []repository.MensesPeriod, today, from, to time.Time) []TaskOccurrence {
 	type key struct {
 		taskID int64
 		day    string
@@ -197,6 +206,8 @@ func buildOccurrences(tasks []repository.Task, completions []repository.TaskComp
 			if c, ok := completionByKey[key{t.ID, d.Format("2006-01-02")}]; ok {
 				occ.Status = StatusCompleted
 				occ.CompletedAt = c.CompletedAt
+			} else if t.ExemptDuringMenses && dateInAnyPeriod(d, periods) {
+				occ.Status = StatusExempt
 			} else if d.Before(today) {
 				occ.Status = StatusMissed
 			} else {
@@ -309,4 +320,23 @@ func daysInMonth(y int, m time.Month) int {
 func dateOnly(t time.Time) time.Time {
 	y, m, d := t.Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+// dateInAnyPeriod reports whether d falls within any of the given menses
+// periods. A period with a NULL end_date is treated as ongoing.
+func dateInAnyPeriod(d time.Time, periods []repository.MensesPeriod) bool {
+	day := dateOnly(d)
+	for _, p := range periods {
+		start := dateOnly(p.StartDate)
+		if day.Before(start) {
+			continue
+		}
+		if !p.EndDate.Valid {
+			return true
+		}
+		if !day.After(dateOnly(p.EndDate.Time)) {
+			return true
+		}
+	}
+	return false
 }
