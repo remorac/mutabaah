@@ -115,6 +115,7 @@ type Task struct {
 	Active      bool           `json:"active"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
+	Sequence    int32          `json:"sequence"`
 }
 
 type TaskCompletion struct {

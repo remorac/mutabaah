@@ -35,6 +35,7 @@ type Querier interface {
 	MarkTaskComplete(ctx context.Context, arg MarkTaskCompleteParams) error
 	MarkTaskIncomplete(ctx context.Context, arg MarkTaskIncompleteParams) error
 	SetTaskActive(ctx context.Context, arg SetTaskActiveParams) error
+	SetTaskSequence(ctx context.Context, arg SetTaskSequenceParams) error
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error

@@ -74,6 +74,14 @@
         </label>
       </div>
 
+      <label class="block">
+        <span class="label-text font-medium block mb-3">Sequence <span
+            class="font-normal opacity-60">(lower numbers appear first)</span></span>
+        <input type="number" name="sequence" step="1" value="{{.Sequence}}"
+          class="input input-bordered w-full {{if index .Errors "sequence"}}input-error{{end}}" />
+        {{with index .Errors "sequence"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+      </label>
+
       <label class="flex items-center gap-3 rounded-lg border border-base-300 bg-base-200/40 px-4 py-3 cursor-pointer">
         <input type="checkbox" name="active" class="toggle toggle-primary" {{if .Active}}checked{{end}} />
         <span class="label-text font-medium">Active</span>

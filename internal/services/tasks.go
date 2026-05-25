@@ -209,6 +209,9 @@ func buildOccurrences(tasks []repository.Task, completions []repository.TaskComp
 		if !out[i].DueDate.Equal(out[j].DueDate) {
 			return out[i].DueDate.Before(out[j].DueDate)
 		}
+		if out[i].Task.Sequence != out[j].Task.Sequence {
+			return out[i].Task.Sequence < out[j].Task.Sequence
+		}
 		return out[i].Task.Title < out[j].Task.Title
 	})
 	return out

@@ -36,6 +36,9 @@ type taskListRow struct {
 	StartDate string
 	EndDate   string
 	Active    bool
+	Sequence  int32
+	IsFirst   bool
+	IsLast    bool
 }
 
 type taskListView struct {
@@ -57,6 +60,7 @@ type taskFormView struct {
 	StartDate   string
 	EndDate     string
 	Active      bool
+	Sequence    string
 	Frequencies []string
 }
 
@@ -77,7 +81,7 @@ func (h *SettingsTasksHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows := make([]taskListRow, 0, len(tasks))
-	for _, t := range tasks {
+	for i, t := range tasks {
 		var cat, end string
 		if t.Category.Valid {
 			cat = t.Category.String
@@ -93,6 +97,9 @@ func (h *SettingsTasksHandler) List(w http.ResponseWriter, r *http.Request) {
 			StartDate: t.StartDate.Format("2006-01-02"),
 			EndDate:   end,
 			Active:    t.Active,
+			Sequence:  t.Sequence,
+			IsFirst:   i == 0,
+			IsLast:    i == len(tasks)-1,
 		})
 	}
 
@@ -128,6 +135,7 @@ func (h *SettingsTasksHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 		IsNew:       true,
 		FormAction:  "/settings/tasks",
 		Active:      true,
+		Sequence:    "0",
 		Frequencies: allFrequencies(),
 	}
 	if err := h.tmpl.Render(w, "settings/tasks/form.html", view); err != nil {
@@ -168,6 +176,7 @@ func (h *SettingsTasksHandler) Create(w http.ResponseWriter, r *http.Request) {
 				StartDate:   input.StartDate,
 				EndDate:     input.EndDate,
 				Active:      input.Active,
+				Sequence:    input.Sequence,
 				Frequencies: allFrequencies(),
 			})
 			return
@@ -228,6 +237,7 @@ func (h *SettingsTasksHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 		StartDate:   t.StartDate.Format("2006-01-02"),
 		EndDate:     end,
 		Active:      t.Active,
+		Sequence:    strconv.FormatInt(int64(t.Sequence), 10),
 		Frequencies: allFrequencies(),
 	}
 	if err := h.tmpl.Render(w, "settings/tasks/form.html", view); err != nil {
@@ -273,6 +283,7 @@ func (h *SettingsTasksHandler) Update(w http.ResponseWriter, r *http.Request) {
 				StartDate:   input.StartDate,
 				EndDate:     input.EndDate,
 				Active:      input.Active,
+				Sequence:    input.Sequence,
 				Frequencies: allFrequencies(),
 			})
 			return
@@ -286,6 +297,39 @@ func (h *SettingsTasksHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	h.logger.Info("task updated", "id", id, "by", user.ID)
 	http.Redirect(w, r, "/settings/tasks", http.StatusSeeOther)
+}
+
+// MoveUp shifts a task one position earlier in the ordered list.
+func (h *SettingsTasksHandler) MoveUp(w http.ResponseWriter, r *http.Request) {
+	h.move(w, r, -1)
+}
+
+// MoveDown shifts a task one position later in the ordered list.
+func (h *SettingsTasksHandler) MoveDown(w http.ResponseWriter, r *http.Request) {
+	h.move(w, r, 1)
+}
+
+func (h *SettingsTasksHandler) move(w http.ResponseWriter, r *http.Request, delta int) {
+	user, _ := apmw.UserFromContext(r.Context())
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	if err := h.admin.Move(r.Context(), id, delta); err != nil {
+		if errors.Is(err, services.ErrTaskNotFound) {
+			h.errs.NotFound(w, r)
+			return
+		}
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	h.logger.Info("task moved", "id", id, "delta", delta, "by", user.ID)
+	redirect := "/settings/tasks"
+	if q := r.URL.RawQuery; q != "" {
+		redirect += "?" + q
+	}
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
 // Delete soft-deletes a task (sets active=false).
@@ -325,6 +369,7 @@ func parseTaskInput(r *http.Request) services.TaskInput {
 		StartDate:   r.PostFormValue("start_date"),
 		EndDate:     r.PostFormValue("end_date"),
 		Active:      r.PostFormValue("active") == "on" || r.PostFormValue("active") == "true",
+		Sequence:    strings.TrimSpace(r.PostFormValue("sequence")),
 	}
 }
 

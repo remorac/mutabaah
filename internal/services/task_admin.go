@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -39,6 +40,7 @@ type TaskInput struct {
 	StartDate   string // YYYY-MM-DD
 	EndDate     string // YYYY-MM-DD or ""
 	Active      bool
+	Sequence    string // integer as string; defaults to 0
 }
 
 // TaskListFilter narrows the settings task listing.
@@ -122,8 +124,50 @@ func (s *TaskAdminService) Update(ctx context.Context, id int64, in TaskInput) e
 		StartDate:   params.StartDate,
 		EndDate:     params.EndDate,
 		Active:      params.Active,
+		Sequence:    params.Sequence,
 		ID:          id,
 	})
+}
+
+// Move shifts a task one position up (delta=-1) or down (delta=+1) in the
+// ordered task list. Sequences are normalised across all tasks on every move
+// so ties created by legacy zero-defaults don't leave the list unchanged.
+func (s *TaskAdminService) Move(ctx context.Context, id int64, delta int) error {
+	if delta != -1 && delta != 1 {
+		return errors.New("delta must be -1 or 1")
+	}
+	tasks, err := s.q.ListTasks(ctx)
+	if err != nil {
+		return err
+	}
+	idx := -1
+	for i, t := range tasks {
+		if t.ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return ErrTaskNotFound
+	}
+	target := idx + delta
+	if target < 0 || target >= len(tasks) {
+		return nil // already at the edge; no-op
+	}
+	tasks[idx], tasks[target] = tasks[target], tasks[idx]
+	for i, t := range tasks {
+		newSeq := int32((i + 1) * 10)
+		if t.Sequence == newSeq {
+			continue
+		}
+		if err := s.q.SetTaskSequence(ctx, repository.SetTaskSequenceParams{
+			ID:       t.ID,
+			Sequence: newSeq,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SoftDelete marks a task inactive, preserving its completion history.
@@ -179,6 +223,16 @@ func (s *TaskAdminService) validateAndBuild(in TaskInput) (repository.CreateTask
 
 	desc := strings.TrimSpace(in.Description)
 
+	var seq int32
+	if s := strings.TrimSpace(in.Sequence); s != "" {
+		n, perr := strconv.ParseInt(s, 10, 32)
+		if perr != nil {
+			verrs["sequence"] = "Sequence must be a whole number."
+		} else {
+			seq = int32(n)
+		}
+	}
+
 	if len(verrs) > 0 {
 		return repository.CreateTaskParams{}, &ValidationError{Fields: verrs}
 	}
@@ -200,5 +254,6 @@ func (s *TaskAdminService) validateAndBuild(in TaskInput) (repository.CreateTask
 		StartDate:   start,
 		EndDate:     end,
 		Active:      in.Active,
+		Sequence:    seq,
 	}, nil
 }

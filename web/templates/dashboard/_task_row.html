@@ -18,17 +18,18 @@
     </div>
   </div>
   <form
+    class="shrink-0"
     hx-post="/tasks/{{.TaskID}}/complete?date={{.DueDate}}"
     hx-target="#dashboard-inner"
     hx-swap="outerHTML"
     hx-headers='{"X-CSRF-Token": "{{.CSRFToken}}"}'>
     {{if eq .Status "completed"}}
-      <button type="submit" class="btn btn-sm btn-ghost">
+      <button type="submit" class="btn btn-sm btn-ghost w-28">
         <i data-lucide="undo-2" class="w-4 h-4"></i>
         Undo
       </button>
     {{else}}
-      <button type="submit" class="btn btn-sm btn-primary">
+      <button type="submit" class="btn btn-sm btn-primary w-28">
         <i data-lucide="check" class="w-4 h-4"></i>
         Mark done
       </button>

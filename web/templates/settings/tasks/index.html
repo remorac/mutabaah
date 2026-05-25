@@ -35,6 +35,7 @@
         <table class="table">
           <thead>
             <tr>
+              <th>#</th>
               <th>Title</th>
               <th>Frequency</th>
               <th>Category</th>
@@ -46,6 +47,7 @@
           <tbody>
             {{range .Rows}}
             <tr>
+              <td class="opacity-60 text-xs">{{.Sequence}}</td>
               <td class="font-medium">{{.Title}}</td>
               <td><span class="badge badge-outline badge-sm">{{.Frequency}}</span></td>
               <td>{{if .Category}}<span class="badge badge-ghost badge-sm">{{.Category}}</span>{{else}}<span class="opacity-40">—</span>{{end}}</td>
@@ -59,11 +61,25 @@
                   <span class="badge badge-ghost badge-sm">inactive</span>
                 {{end}}
               </td>
-              <td class="text-right">
-                <a href="/settings/tasks/{{.ID}}/edit" class="btn btn-ghost btn-xs">
-                  <i data-lucide="pencil" class="w-4 h-4"></i>
-                  Edit
-                </a>
+              <td class="text-right whitespace-nowrap">
+                <div class="inline-flex items-center gap-1">
+                  <form method="POST" action="/settings/tasks/{{.ID}}/move-up" class="inline">
+                    <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
+                    <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move up" {{if .IsFirst}}disabled{{end}}>
+                      <i data-lucide="arrow-up" class="w-4 h-4"></i>
+                    </button>
+                  </form>
+                  <form method="POST" action="/settings/tasks/{{.ID}}/move-down" class="inline">
+                    <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
+                    <button type="submit" class="btn btn-ghost btn-xs" aria-label="Move down" {{if .IsLast}}disabled{{end}}>
+                      <i data-lucide="arrow-down" class="w-4 h-4"></i>
+                    </button>
+                  </form>
+                  <a href="/settings/tasks/{{.ID}}/edit" class="btn btn-ghost btn-xs">
+                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                    Edit
+                  </a>
+                </div>
               </td>
             </tr>
             {{end}}

@@ -22,11 +22,13 @@ CREATE TABLE tasks (
     start_date  DATE         NOT NULL,
     end_date    DATE         NULL,
     active      BOOLEAN      NOT NULL DEFAULT TRUE,
+    sequence    INT          NOT NULL DEFAULT 0,
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_tasks_active (active),
-    KEY idx_tasks_frequency (frequency)
+    KEY idx_tasks_frequency (frequency),
+    KEY idx_tasks_sequence (sequence)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE task_completions (

@@ -1,30 +1,33 @@
 -- name: CreateTask :execlastid
-INSERT INTO tasks (title, description, category, frequency, start_date, end_date, active)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO tasks (title, description, category, frequency, start_date, end_date, active, sequence)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetTask :one
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at
+SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
 FROM tasks
 WHERE id = ?;
 
 -- name: ListTasks :many
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at
+SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
 FROM tasks
-ORDER BY created_at DESC;
+ORDER BY sequence ASC, created_at DESC;
 
 -- name: ListActiveTasks :many
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at
+SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
 FROM tasks
 WHERE active = TRUE
-ORDER BY created_at DESC;
+ORDER BY sequence ASC, created_at DESC;
 
 -- name: UpdateTask :exec
 UPDATE tasks
-SET title = ?, description = ?, category = ?, frequency = ?, start_date = ?, end_date = ?, active = ?
+SET title = ?, description = ?, category = ?, frequency = ?, start_date = ?, end_date = ?, active = ?, sequence = ?
 WHERE id = ?;
 
 -- name: SetTaskActive :exec
 UPDATE tasks SET active = ? WHERE id = ?;
+
+-- name: SetTaskSequence :exec
+UPDATE tasks SET sequence = ? WHERE id = ?;
 
 -- name: DeleteTask :exec
 DELETE FROM tasks WHERE id = ?;

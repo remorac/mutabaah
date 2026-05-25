@@ -12,8 +12,8 @@ import (
 )
 
 const createTask = `-- name: CreateTask :execlastid
-INSERT INTO tasks (title, description, category, frequency, start_date, end_date, active)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tasks (title, description, category, frequency, start_date, end_date, active, sequence)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateTaskParams struct {
@@ -24,6 +24,7 @@ type CreateTaskParams struct {
 	StartDate   time.Time      `json:"start_date"`
 	EndDate     sql.NullTime   `json:"end_date"`
 	Active      bool           `json:"active"`
+	Sequence    int32          `json:"sequence"`
 }
 
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (int64, error) {
@@ -35,6 +36,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (int64, 
 		arg.StartDate,
 		arg.EndDate,
 		arg.Active,
+		arg.Sequence,
 	)
 	if err != nil {
 		return 0, err
@@ -52,7 +54,7 @@ func (q *Queries) DeleteTask(ctx context.Context, id int64) error {
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at
+SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
 FROM tasks
 WHERE id = ?
 `
@@ -71,15 +73,16 @@ func (q *Queries) GetTask(ctx context.Context, id int64) (Task, error) {
 		&i.Active,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Sequence,
 	)
 	return i, err
 }
 
 const listActiveTasks = `-- name: ListActiveTasks :many
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at
+SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
 FROM tasks
 WHERE active = TRUE
-ORDER BY created_at DESC
+ORDER BY sequence ASC, created_at DESC
 `
 
 func (q *Queries) ListActiveTasks(ctx context.Context) ([]Task, error) {
@@ -102,6 +105,7 @@ func (q *Queries) ListActiveTasks(ctx context.Context) ([]Task, error) {
 			&i.Active,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Sequence,
 		); err != nil {
 			return nil, err
 		}
@@ -147,9 +151,9 @@ func (q *Queries) ListTaskCategories(ctx context.Context) ([]sql.NullString, err
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at
+SELECT id, title, description, category, frequency, start_date, end_date, active, created_at, updated_at, sequence
 FROM tasks
-ORDER BY created_at DESC
+ORDER BY sequence ASC, created_at DESC
 `
 
 func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
@@ -172,6 +176,7 @@ func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
 			&i.Active,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Sequence,
 		); err != nil {
 			return nil, err
 		}
@@ -200,9 +205,23 @@ func (q *Queries) SetTaskActive(ctx context.Context, arg SetTaskActiveParams) er
 	return err
 }
 
+const setTaskSequence = `-- name: SetTaskSequence :exec
+UPDATE tasks SET sequence = ? WHERE id = ?
+`
+
+type SetTaskSequenceParams struct {
+	Sequence int32 `json:"sequence"`
+	ID       int64 `json:"id"`
+}
+
+func (q *Queries) SetTaskSequence(ctx context.Context, arg SetTaskSequenceParams) error {
+	_, err := q.db.ExecContext(ctx, setTaskSequence, arg.Sequence, arg.ID)
+	return err
+}
+
 const updateTask = `-- name: UpdateTask :exec
 UPDATE tasks
-SET title = ?, description = ?, category = ?, frequency = ?, start_date = ?, end_date = ?, active = ?
+SET title = ?, description = ?, category = ?, frequency = ?, start_date = ?, end_date = ?, active = ?, sequence = ?
 WHERE id = ?
 `
 
@@ -214,6 +233,7 @@ type UpdateTaskParams struct {
 	StartDate   time.Time      `json:"start_date"`
 	EndDate     sql.NullTime   `json:"end_date"`
 	Active      bool           `json:"active"`
+	Sequence    int32          `json:"sequence"`
 	ID          int64          `json:"id"`
 }
 
@@ -226,6 +246,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
 		arg.StartDate,
 		arg.EndDate,
 		arg.Active,
+		arg.Sequence,
 		arg.ID,
 	)
 	return err
