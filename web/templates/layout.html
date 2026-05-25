@@ -8,14 +8,39 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script>
+    (function() {
+      const stored = localStorage.getItem('mutabaah-theme');
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = stored || (systemDark ? 'dim' : 'fantasy');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <style>
+    :root {
+      --space-1: 0.25rem;
+      --space-2: 0.5rem;
+      --space-3: 0.75rem;
+      --space-4: 1rem;
+      --space-5: 1.25rem;
+      --space-6: 1.5rem;
+      --space-8: 2rem;
+      --space-10: 2.5rem;
+      --space-12: 3rem;
+      --radius-sm: 0.5rem;
+      --radius-md: 0.75rem;
+      --radius-lg: 1rem;
+      --radius-xl: 1.25rem;
+      --radius-2xl: 1.5rem;
+    }
+
     .sidebar-shell {
       background:
         linear-gradient(180deg, color-mix(in oklab, var(--color-primary) 8%, transparent), transparent 26%),
@@ -33,7 +58,7 @@
       gap: 0.75rem;
       min-height: 2.75rem;
       padding: 0.625rem 0.75rem;
-      border-radius: 0.75rem;
+      border-radius: var(--radius-lg);
       color: color-mix(in oklab, var(--color-base-content) 78%, transparent);
       font-weight: 600;
       line-height: 1.25;
@@ -58,6 +83,92 @@
 
     .sidebar-nav.menu li > a[data-nav-link].active svg {
       stroke-width: 2.4;
+    }
+
+    /* HTMX transitions */
+    .htmx-swapping {
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 200ms ease, transform 200ms ease;
+    }
+
+    .htmx-added {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    .htmx-added.htmx-settling {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 200ms ease, transform 200ms ease;
+    }
+
+    /* Button loading states */
+    .btn.htmx-request {
+      position: relative;
+      color: transparent !important;
+    }
+
+    .btn.htmx-request::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid currentColor;
+      border-bottom-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      color: var(--color-primary-content);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Page entrance */
+    main {
+      animation: fadeIn 300ms ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--color-base-content) 20%, transparent);
+      border-radius: 3px;
+    }
+
+    /* Theme toggle button */
+    .theme-toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-lg);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: background-color 160ms ease, color 160ms ease;
+      width: 100%;
+    }
+    .theme-toggle-btn:hover {
+      background: color-mix(in oklab, var(--color-primary) 10%, var(--color-base-100));
+      color: var(--color-base-content);
     }
   </style>
 </head>
@@ -143,6 +254,16 @@
           </li>
         </ul>
 
+        <div class="px-4 pb-3">
+          <div class="flex flex-col gap-1">
+            <button type="button" class="theme-toggle-btn" data-theme-toggle aria-label="Switch to dark theme">
+              <span data-theme-icon="light" class="grid place-items-center"><i data-lucide="sun" class="w-4 h-4"></i></span>
+              <span data-theme-icon="dark" class="hidden place-items-center"><i data-lucide="moon" class="w-4 h-4"></i></span>
+              <span data-theme-label>Light</span>
+            </button>
+          </div>
+        </div>
+
         <div class="m-4 mt-0 flex items-center gap-3 rounded-2xl border border-base-300/70 bg-base-100/75 p-3 shadow-sm">
           <div class="avatar avatar-placeholder">
             <div class="w-10 rounded-full bg-accent text-accent-content">
@@ -179,6 +300,31 @@
         link.classList.add("active");
         link.setAttribute("aria-current", "page");
       }
+    });
+
+    document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+      const label = button.querySelector("[data-theme-label]");
+      const lightIcon = button.querySelector("[data-theme-icon='light']");
+      const darkIcon = button.querySelector("[data-theme-icon='dark']");
+
+      const setTheme = (theme) => {
+        const isDark = theme === "dim";
+
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("mutabaah-theme", theme);
+        button.setAttribute("aria-label", isDark ? "Switch to light theme" : "Switch to dark theme");
+
+        if (label) label.textContent = isDark ? "Dark" : "Light";
+        if (lightIcon) lightIcon.classList.toggle("hidden", isDark);
+        if (darkIcon) darkIcon.classList.toggle("hidden", !isDark);
+        if (darkIcon) darkIcon.classList.toggle("grid", isDark);
+      };
+
+      setTheme(document.documentElement.getAttribute("data-theme") || "fantasy");
+      button.addEventListener("click", () => {
+        const nextTheme = document.documentElement.getAttribute("data-theme") === "fantasy" ? "dim" : "fantasy";
+        setTheme(nextTheme);
+      });
     });
 
     if (window.lucide) window.lucide.createIcons();

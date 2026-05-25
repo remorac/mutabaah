@@ -241,21 +241,23 @@ func heatmapClass(done, total int, future bool) string {
 		return ""
 	}
 	if future {
-		return "bg-base-200"
+		return "bg-base-200/70"
 	}
 	if done == 0 {
-		return "bg-error/15"
+		return "bg-error/10 text-error"
 	}
 	ratio := float64(done) / float64(total)
 	switch {
 	case ratio >= 1.0:
-		return "bg-success/60"
+		return "bg-success/30 text-success"
 	case ratio >= 0.75:
-		return "bg-success/45"
+		return "bg-success/22 text-success/80"
 	case ratio >= 0.5:
-		return "bg-success/30"
+		return "bg-success/16 text-success/70"
+	case ratio >= 0.25:
+		return "bg-success/10 text-success/60"
 	default:
-		return "bg-success/15"
+		return "bg-success/6 text-success/50"
 	}
 }
 

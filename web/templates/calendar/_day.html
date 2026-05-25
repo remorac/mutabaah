@@ -2,43 +2,52 @@
 <div class="card-body">
   <div class="flex items-center justify-between gap-2">
     <h3 class="card-title text-base flex items-center gap-2">
-      <i data-lucide="calendar" class="w-4 h-4"></i>
+      <span class="w-8 h-8 rounded-lg bg-primary/10 text-primary grid place-items-center">
+        <i data-lucide="calendar" class="w-4 h-4"></i>
+      </span>
       {{.DateLabel}}
     </h3>
     {{if gt .Total 0}}
-      <span class="badge {{if eq .Completed .Total}}badge-success{{else}}badge-ghost{{end}}">
+      <span class="badge {{if eq .Completed .Total}}badge-success{{else}}badge-ghost{{end}} badge-sm">
         {{.Completed}} / {{.Total}}
       </span>
     {{end}}
   </div>
 
   {{if .Tasks}}
-  <ul class="flex flex-col mt-2">
+  <ul class="flex flex-col mt-3">
     {{range .Tasks}}
-    <li class="flex items-center justify-between gap-3 py-2 border-b border-base-200 last:border-b-0">
-      <div class="flex items-center gap-3 min-w-0">
-        {{if eq .Status "completed"}}
-          <i data-lucide="check-circle" class="w-5 h-5 text-success shrink-0"></i>
-        {{else if eq .Status "missed"}}
-          <i data-lucide="x-circle" class="w-5 h-5 text-error shrink-0"></i>
-        {{else}}
-          <i data-lucide="circle" class="w-5 h-5 opacity-50 shrink-0"></i>
-        {{end}}
-        <div class="min-w-0">
-          <div class="font-medium truncate">{{.Title}}</div>
-          <div class="text-xs opacity-60 flex flex-wrap gap-2 items-center">
-            {{if ne .Frequency "daily"}}
-            <span class="badge badge-outline badge-sm">{{.Frequency}}</span>
-            {{end}}
-            {{if .Description}}<span>{{.Description}}</span>{{end}}
-          </div>
+    <li class="flex items-center gap-3 py-2.5 border-b border-base-200 last:border-b-0">
+      {{if eq .Status "completed"}}
+        <span class="shrink-0 w-5 h-5 text-success grid place-items-center">
+          <i data-lucide="circle-check" class="w-5 h-5"></i>
+        </span>
+      {{else if eq .Status "missed"}}
+        <span class="shrink-0 w-5 h-5 text-error grid place-items-center">
+          <i data-lucide="circle-x" class="w-5 h-5"></i>
+        </span>
+      {{else}}
+        <span class="shrink-0 w-5 h-5 rounded-full border-2 border-base-300 border-dashed opacity-60 grid place-items-center"></span>
+      {{end}}
+      <div class="min-w-0">
+        <div class="font-medium truncate text-sm">{{.Title}}</div>
+        <div class="text-xs opacity-50 flex flex-wrap gap-2 items-center mt-0.5">
+          {{if ne .Frequency "daily"}}
+          <span class="badge badge-outline badge-sm font-normal">{{.Frequency}}</span>
+          {{end}}
+          {{if .Description}}<span>{{.Description}}</span>{{end}}
         </div>
       </div>
     </li>
     {{end}}
   </ul>
   {{else}}
-  <p class="opacity-60 text-sm mt-2">No tasks scheduled.</p>
+  <div class="flex flex-col items-center text-center py-8">
+    <div class="w-12 h-12 rounded-xl bg-base-200 grid place-items-center mb-2">
+      <i data-lucide="coffee" class="w-6 h-6 opacity-40"></i>
+    </div>
+    <p class="text-sm opacity-60">No tasks scheduled.</p>
+  </div>
   {{end}}
 </div>
 <script>if (window.lucide) window.lucide.createIcons();</script>

@@ -1,33 +1,93 @@
 {{define "content"}}
-<div class="max-w-md mx-auto mt-8">
-  <div class="card bg-base-100 shadow-md">
-    <div class="card-body gap-5">
-      <h1 class="card-title">
-        <i data-lucide="lock" class="w-5 h-5"></i>
-        Sign in
-      </h1>
+<div class="min-h-[80vh] flex items-center justify-center relative overflow-hidden">
+  <!-- Background decoration -->
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full opacity-30 blur-3xl" style="background: color-mix(in oklab, var(--color-primary) 20%, transparent);"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-20 blur-3xl" style="background: color-mix(in oklab, var(--color-secondary) 20%, transparent);"></div>
+  </div>
 
-      {{if .Error}}
-      <div role="alert" class="alert alert-error">
-        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-        <span>{{.Error}}</span>
+  <div class="relative w-full max-w-md px-4">
+    <!-- Brand header -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-content shadow-lg mb-4">
+        <i data-lucide="book-open-check" class="w-8 h-8"></i>
       </div>
-      {{end}}
-
-      <form method="POST" action="/login" class="flex flex-col gap-4 mt-1">
-        <label class="block">
-          <span class="label-text font-medium block mb-3">Email</span>
-          <input type="email" name="email" required autofocus value="{{.Email}}"
-                 class="input input-bordered w-full" />
-        </label>
-        <label class="block">
-          <span class="label-text font-medium block mb-3">Password</span>
-          <input type="password" name="password" required
-                 class="input input-bordered w-full" />
-        </label>
-        <button type="submit" class="btn btn-primary mt-1 w-full">Sign in</button>
-      </form>
+      <h1 class="text-2xl font-bold tracking-tight">Mutaba'ah Tracker</h1>
+      <p class="text-sm opacity-60 mt-1">Daily spiritual practice tracker</p>
     </div>
+
+    <div class="card bg-base-100 shadow-xl border border-base-300/50">
+      <div class="card-body gap-5 p-6 sm:p-8">
+        <div class="flex items-center gap-2">
+          <i data-lucide="lock" class="w-5 h-5 text-primary"></i>
+          <h2 class="card-title text-lg">Sign in</h2>
+        </div>
+
+        {{if .Error}}
+        <div role="alert" class="alert alert-error" style="animation: slideDown 300ms ease;">
+          <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+          <span class="text-sm">{{.Error}}</span>
+        </div>
+        {{end}}
+
+        <form method="POST" action="/login" class="flex flex-col gap-4">
+          <label class="block">
+            <span class="label-text font-medium block mb-2">Email</span>
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 left-0 z-10 grid w-10 place-items-center text-base-content/40">
+                <i data-lucide="mail" class="w-4 h-4"></i>
+              </span>
+              <input type="email" name="email" required autofocus value="{{.Email}}"
+                     class="input input-bordered w-full pl-10 transition-all focus:ring-2 focus:ring-primary/20" />
+            </div>
+          </label>
+          <label class="block">
+            <span class="label-text font-medium block mb-2">Password</span>
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 left-0 z-10 grid w-10 place-items-center text-base-content/40">
+                <i data-lucide="key-round" class="w-4 h-4"></i>
+              </span>
+              <input id="login-password" type="password" name="password" required
+                     class="input input-bordered w-full pl-10 pr-10 transition-all focus:ring-2 focus:ring-primary/20" />
+              <button type="button" data-password-toggle class="btn btn-ghost btn-xs btn-circle absolute right-2 top-1/2 z-10 -translate-y-1/2 text-base-content/45 hover:text-base-content" tabindex="-1" aria-label="Show password" aria-controls="login-password">
+                <span data-password-show class="grid place-items-center"><i data-lucide="eye" class="w-4 h-4"></i></span>
+                <span data-password-hide hidden class="place-items-center"><i data-lucide="eye-off" class="w-4 h-4"></i></span>
+              </button>
+            </div>
+          </label>
+          <button type="submit" class="btn btn-primary mt-1 w-full shadow-sm hover:shadow-md transition-shadow">
+            Sign in
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <p class="text-center text-xs opacity-50 mt-6">
+      Track your daily ibadah with consistency and intention.
+    </p>
   </div>
 </div>
+
+<style>
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+<script>
+  document.querySelector("[data-password-toggle]")?.addEventListener("click", function () {
+    const input = document.getElementById("login-password");
+    const showIcon = this.querySelector("[data-password-show]");
+    const hideIcon = this.querySelector("[data-password-hide]");
+    const isHidden = input.type === "password";
+
+    input.type = isHidden ? "text" : "password";
+    this.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+    showIcon.hidden = isHidden;
+    showIcon.classList.toggle("grid", !isHidden);
+    hideIcon.hidden = !isHidden;
+    hideIcon.classList.toggle("grid", isHidden);
+  });
+</script>
 {{end}}

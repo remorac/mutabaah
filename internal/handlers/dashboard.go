@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -55,11 +56,23 @@ type missedGroupView struct {
 	Rows      []taskRowView
 }
 
+type dashboardStatsView struct {
+	TodayTotal   int
+	TodayDone    int
+	TodayPct     int
+	WeeklyTotal  int
+	WeeklyDone   int
+	WeeklyPct    int
+	Streak       int
+	PendingCount int
+}
+
 type dashboardInnerView struct {
 	Today        string
 	TodayPending []taskRowView
 	TodayDone    []taskRowView
 	Missed       []missedGroupView
+	Stats        dashboardStatsView
 }
 
 type dashboardPageView struct {
@@ -179,7 +192,74 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 		view.Missed[idx].Rows = append(view.Missed[idx].Rows, rowFromOccurrence(occ, csrfToken))
 	}
 	sortMissedGroupsByDateDesc(view.Missed)
+
+	// Compute stats
+	view.Stats = h.computeStats(r.Context(), user.ID, today, todayOccs)
+
 	return view, nil
+}
+
+func (h *DashboardHandler) computeStats(ctx context.Context, userID int64, today time.Time, todayOccs []services.TaskOccurrence) dashboardStatsView {
+	stats := dashboardStatsView{}
+
+	// Today stats
+	stats.TodayTotal = len(todayOccs)
+	for _, occ := range todayOccs {
+		if occ.Status == services.StatusCompleted {
+			stats.TodayDone++
+		}
+	}
+	stats.PendingCount = stats.TodayTotal - stats.TodayDone
+	if stats.TodayTotal > 0 {
+		stats.TodayPct = (stats.TodayDone * 100) / stats.TodayTotal
+	}
+
+	// Weekly stats (Saturday to today inclusive)
+	weekStart := saturdayWeekStart(today)
+	weekOccs, err := h.tasks.OccurrencesBetweenAsOf(ctx, userID, weekStart, today, today)
+	if err == nil {
+		stats.WeeklyTotal = len(weekOccs)
+		for _, occ := range weekOccs {
+			if occ.Status == services.StatusCompleted {
+				stats.WeeklyDone++
+			}
+		}
+		if stats.WeeklyTotal > 0 {
+			stats.WeeklyPct = (stats.WeeklyDone * 100) / stats.WeeklyTotal
+		}
+	}
+
+	// Streak: consecutive days of 100% completion (looking backwards)
+	for offset := 0; offset < 365; offset++ {
+		d := today.AddDate(0, 0, -offset)
+		occs, err := h.tasks.OccurrencesOnAsOf(ctx, userID, d, today)
+		if err != nil {
+			break
+		}
+		if len(occs) == 0 {
+			if offset == 0 {
+				continue // today has no tasks, keep checking
+			}
+			break
+		}
+		allDone := true
+		for _, occ := range occs {
+			if occ.Status != services.StatusCompleted {
+				allDone = false
+				break
+			}
+		}
+		if allDone {
+			stats.Streak++
+		} else if offset == 0 {
+			// today not done yet, don't count but keep checking yesterday
+			continue
+		} else {
+			break
+		}
+	}
+
+	return stats
 }
 
 func sortMissedGroupsByDateDesc(groups []missedGroupView) {

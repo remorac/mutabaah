@@ -1,9 +1,15 @@
 {{define "content"}}
 <div class="max-w-2xl flex flex-col gap-5">
 
+  <div class="flex items-center gap-2 text-sm opacity-60 mb-1">
+    <a href="/settings/tasks" class="hover:opacity-100 hover:underline transition-opacity">Tasks</a>
+    <i data-lucide="chevron-right" class="w-3 h-3"></i>
+    <span class="font-medium opacity-100">{{if .IsNew}}New{{else}}Edit{{end}}</span>
+  </div>
+
   <div class="flex items-center justify-between gap-3">
     <h1 class="text-2xl font-semibold flex items-center gap-2">
-      <i data-lucide="{{if .IsNew}}plus-circle{{else}}pencil{{end}}" class="w-6 h-6"></i>
+      <i data-lucide="{{if .IsNew}}plus-circle{{else}}pencil{{end}}" class="w-6 h-6 text-primary"></i>
       {{if .IsNew}}New task{{else}}Edit task{{end}}
     </h1>
     <a href="/settings/tasks" class="btn btn-ghost btn-sm">
@@ -13,35 +19,35 @@
   </div>
 
   {{if .Errors}}
-  <div role="alert" class="alert alert-error">
-    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-    <span>Please fix the errors below.</span>
+  <div role="alert" class="alert alert-error" style="animation: slideDown 300ms ease;">
+    <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+    <span class="text-sm">Please fix the errors below.</span>
   </div>
   {{end}}
 
-  <form method="POST" action="{{.FormAction}}" class="card bg-base-100 shadow-sm">
+  <form method="POST" action="{{.FormAction}}" class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body flex flex-col gap-5">
       <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
 
       <label class="block">
-        <span class="label-text font-medium block mb-3">Title</span>
+        <span class="label-text font-medium block mb-2">Title</span>
         <input type="text" name="title" required maxlength="255" value="{{.Title}}"
-          class="input input-bordered w-full {{if index .Errors "title"}}input-error{{end}}" />
+          class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "title"}}input-error{{end}}" />
         {{with index .Errors "title"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
       </label>
 
       <div class="grid md:grid-cols-2 gap-4">
         <label class="block">
-          <span class="label-text font-medium block mb-3">Description</span>
+          <span class="label-text font-medium block mb-2">Description</span>
           <input type="text" name="description" maxlength="64" value="{{.Description}}" placeholder="e.g. fard, sunnah, quran"
-            class="input input-bordered w-full {{if index .Errors "description"}}input-error{{end}}" />
+            class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "description"}}input-error{{end}}" />
           {{with index .Errors "description"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
         </label>
 
         <label class="block">
-          <span class="label-text font-medium block mb-3">Frequency</span>
+          <span class="label-text font-medium block mb-2">Frequency</span>
           <select name="frequency" required
-            class="select select-bordered w-full {{if index .Errors "frequency"}}select-error{{end}}">
+            class="select select-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "frequency"}}select-error{{end}}">
             <option value="" {{if not .Frequency}}selected{{end}}>Choose…</option>
             {{range .Frequencies}}
             <option value="{{.}}" {{if eq . $.Frequency}}selected{{end}}>{{.}}</option>
@@ -53,30 +59,30 @@
 
       <div class="grid md:grid-cols-2 gap-4">
         <label class="block">
-          <span class="label-text font-medium block mb-3">Start date</span>
+          <span class="label-text font-medium block mb-2">Start date</span>
           <input type="date" name="start_date" required value="{{.StartDate}}"
-            class="input input-bordered w-full {{if index .Errors "start_date"}}input-error{{end}}" />
+            class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "start_date"}}input-error{{end}}" />
           {{with index .Errors "start_date"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
         </label>
 
         <label class="block">
-          <span class="label-text font-medium block mb-3">End date <span
+          <span class="label-text font-medium block mb-2">End date <span
               class="font-normal opacity-60">(optional)</span></span>
           <input type="date" name="end_date" value="{{.EndDate}}"
-            class="input input-bordered w-full {{if index .Errors "end_date"}}input-error{{end}}" />
+            class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "end_date"}}input-error{{end}}" />
           {{with index .Errors "end_date"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
         </label>
       </div>
 
       <label class="block">
-        <span class="label-text font-medium block mb-3">Sequence <span
+        <span class="label-text font-medium block mb-2">Sequence <span
             class="font-normal opacity-60">(lower numbers appear first)</span></span>
         <input type="number" name="sequence" step="1" value="{{.Sequence}}"
-          class="input input-bordered w-full {{if index .Errors "sequence"}}input-error{{end}}" />
+          class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index .Errors "sequence"}}input-error{{end}}" />
         {{with index .Errors "sequence"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
       </label>
 
-      <label class="flex items-center gap-3 rounded-lg border border-base-300 bg-base-200/40 px-4 py-3 cursor-pointer">
+      <label class="flex items-center gap-3 rounded-xl border border-base-300 bg-base-200/30 px-4 py-3 cursor-pointer transition-colors hover:bg-base-200/50">
         <input type="checkbox" name="active" class="toggle toggle-primary" {{if .Active}}checked{{end}} />
         <span class="label-text font-medium">Active</span>
       </label>
@@ -91,7 +97,7 @@
 
         <div class="flex flex-col-reverse sm:flex-row gap-2 w-full sm:w-auto">
           <a href="/settings/tasks" class="btn btn-ghost btn-sm w-full sm:w-auto">Cancel</a>
-          <button type="submit" class="btn btn-primary btn-sm w-full sm:w-auto">
+          <button type="submit" class="btn btn-primary btn-sm w-full sm:w-auto shadow-sm">
             <i data-lucide="save" class="w-4 h-4"></i>
             {{if .IsNew}}Create{{else}}Save{{end}}
           </button>
@@ -126,5 +132,11 @@
   {{end}}
 
 </div>
+<style>
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
 <script>if (window.lucide) window.lucide.createIcons();</script>
 {{end}}

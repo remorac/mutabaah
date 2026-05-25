@@ -1,39 +1,40 @@
 {{define "_task_row.html"}}
-<li class="flex items-center justify-between gap-3 py-2 border-b border-base-200 last:border-b-0">
+<li
+  class="group flex items-center justify-between gap-3 py-2.5 border-b border-base-200 last:border-b-0 transition-all duration-150 hover:translate-y-[-1px]">
   <div class="flex items-center gap-3 min-w-0">
     {{if eq .Status "completed"}}
-      <i data-lucide="check-circle" class="w-5 h-5 text-success shrink-0"></i>
+    <span class="shrink-0 w-5 h-5 text-success grid place-items-center">
+      <i data-lucide="circle-check" class="w-5 h-5"></i>
+    </span>
     {{else if eq .Status "missed"}}
-      <i data-lucide="x-circle" class="w-5 h-5 text-error shrink-0"></i>
+    <span class="shrink-0 w-5 h-5 text-error grid place-items-center">
+      <i data-lucide="circle-x" class="w-5 h-5"></i>
+    </span>
     {{else}}
-      <i data-lucide="circle" class="w-5 h-5 opacity-50 shrink-0"></i>
+    <span
+      class="shrink-0 w-5 h-5 rounded-full border-2 border-base-300 border-dashed opacity-60 grid place-items-center">
+    </span>
     {{end}}
     <div class="min-w-0">
-      <div class="font-medium truncate">{{.Title}}</div>
-      <div class="text-xs opacity-60 flex flex-wrap gap-2 items-center">
+      <div class="font-medium truncate text-sm">{{.Title}}</div>
+      <div class="text-xs opacity-50 flex flex-wrap gap-2 items-center mt-0.5">
         {{if ne .Frequency "daily"}}
-        <span class="badge badge-outline badge-sm">{{.Frequency}}</span>
+        <span class="badge badge-outline badge-sm font-normal">{{.Frequency}}</span>
         {{end}}
         {{if .Description}}<span>{{.Description}}</span>{{end}}
       </div>
     </div>
   </div>
-  <form
-    class="shrink-0"
-    hx-post="/tasks/{{.TaskID}}/complete?date={{.DueDate}}"
-    hx-target="#dashboard-inner"
-    hx-swap="outerHTML"
-    hx-headers='{"X-CSRF-Token": "{{.CSRFToken}}"}'>
+  <form class="shrink-0" hx-post="/tasks/{{.TaskID}}/complete?date={{.DueDate}}" hx-target="#dashboard-inner"
+    hx-swap="outerHTML swap:150ms" hx-headers='{"X-CSRF-Token": "{{.CSRFToken}}"}'>
     {{if eq .Status "completed"}}
-      <button type="submit" class="btn btn-sm btn-ghost w-28">
-        <i data-lucide="undo-2" class="w-4 h-4"></i>
-        Undo
-      </button>
+    <button type="submit" class="btn btn-sm btn-ghost w-12 opacity-60 hover:opacity-100 transition-opacity">
+      <i data-lucide="undo-2" class="w-4 h-4"></i>
+    </button>
     {{else}}
-      <button type="submit" class="btn btn-sm btn-primary w-28">
-        <i data-lucide="check" class="w-4 h-4"></i>
-        Mark done
-      </button>
+    <button type="submit" class="btn btn-sm btn-primary w-12 shadow-sm hover:shadow-md transition-shadow">
+      <i data-lucide="check" class="w-4 h-4"></i>
+    </button>
     {{end}}
   </form>
 </li>

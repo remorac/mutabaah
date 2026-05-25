@@ -3,46 +3,65 @@
   <div class="flex items-center justify-between flex-wrap gap-3">
     <div>
       <h2 class="text-xl font-semibold flex items-center gap-2">
-        <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+        <i data-lucide="bar-chart-3" class="w-5 h-5 text-primary"></i>
         Report
       </h2>
       <p class="text-sm opacity-70">{{.MonthLabel}}</p>
     </div>
-    <a href="/reports/export.pdf?month={{.MonthValue}}{{if .GroupByTasks}}&group_by_tasks=1{{end}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}" class="btn btn-outline btn-sm">
+    <a href="/reports/export.pdf?month={{.MonthValue}}{{if .GroupByTasks}}&group_by_tasks=1{{end}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}" class="btn btn-outline btn-sm shadow-sm">
       <i data-lucide="file-down" class="w-4 h-4"></i>
       Export PDF
     </a>
   </div>
 
-  <div class="card bg-base-100 shadow-sm">
-    <div class="card-body gap-5 p-4 sm:p-6">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <h3 class="card-title text-base">Completion</h3>
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="rounded-lg bg-base-200/70 px-4 py-3 text-sm">
-            <span class="opacity-65">completion</span>
-            <span class="font-semibold">{{.TotalPct}}%</span>
-          </div>
-          <div class="rounded-lg bg-base-200/70 px-4 py-3 text-sm">
-            <span class="opacity-65">done</span>
-            <span class="font-semibold">{{.TotalDone}}</span>
-          </div>
-          <div class="rounded-lg bg-base-200/70 px-4 py-3 text-sm">
-            <span class="opacity-65">due</span>
-            <span class="font-semibold">{{.TotalDue}}</span>
-          </div>
+  <!-- Metric cards -->
+  <div class="grid grid-cols-3 gap-3">
+    <div class="card bg-base-100 shadow-sm border border-base-200">
+      <div class="card-body p-4 flex flex-row items-center gap-4">
+        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+          <i data-lucide="percent" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="text-2xl font-bold leading-none">{{.TotalPct}}%</div>
+          <div class="text-xs opacity-60 mt-1">completion</div>
         </div>
       </div>
+    </div>
+    <div class="card bg-base-100 shadow-sm border border-base-200">
+      <div class="card-body p-4 flex flex-row items-center gap-4">
+        <div class="w-10 h-10 rounded-xl bg-success/10 text-success grid place-items-center shrink-0">
+          <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="text-2xl font-bold leading-none">{{.TotalDone}}</div>
+          <div class="text-xs opacity-60 mt-1">done</div>
+        </div>
+      </div>
+    </div>
+    <div class="card bg-base-100 shadow-sm border border-base-200">
+      <div class="card-body p-4 flex flex-row items-center gap-4">
+        <div class="w-10 h-10 rounded-xl bg-warning/10 text-warning grid place-items-center shrink-0">
+          <i data-lucide="list-todo" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="text-2xl font-bold leading-none">{{.TotalDue}}</div>
+          <div class="text-xs opacity-60 mt-1">due</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-      <div class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <form method="GET" action="/reports" class="flex flex-col gap-4">
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="card-body gap-5 p-4 sm:p-6">
+      <div class="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <form method="GET" action="/reports" class="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
           <label class="form-control">
-            <span class="label-text">Month</span>
+            <span class="label-text font-medium">Month</span>
             <input type="month" name="month" value="{{.MonthValue}}" class="input input-bordered w-full" />
           </label>
 
           <label class="form-control">
-            <span class="label-text">User</span>
+            <span class="label-text font-medium">User</span>
             <select name="user_id" class="select select-bordered w-full">
               <option value="" {{if not .HasSelectedUser}}selected{{end}} disabled>Select user</option>
               {{range .UserOptions}}
@@ -51,24 +70,30 @@
             </select>
           </label>
 
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <label class="label cursor-pointer gap-3 px-0">
-              <input type="checkbox" name="group_by_tasks" value="1" class="checkbox checkbox-primary" {{if .GroupByTasks}}checked{{end}} />
-              <span class="label-text">Group by tasks</span>
-            </label>
-            <button type="submit" class="btn btn-primary">
+          <label class="label cursor-pointer gap-3 px-0 py-2">
+            <input type="checkbox" name="group_by_tasks" value="1" class="checkbox checkbox-primary checkbox-sm" {{if .GroupByTasks}}checked{{end}} />
+            <span class="label-text">Group by tasks</span>
+          </label>
+
+          <div class="flex flex-wrap items-center gap-2 pt-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-1 shadow-sm">
               <i data-lucide="filter" class="w-4 h-4"></i>
               Apply
             </button>
+            <a href="/reports" class="btn btn-ghost btn-sm">
+              Reset
+            </a>
           </div>
         </form>
 
         <div class="flex min-w-0 flex-col gap-5">
           {{if not .HasSelectedUser}}
-            <p class="text-sm opacity-70 flex items-center gap-2">
-              <i data-lucide="user-check" class="w-4 h-4"></i>
-              Select a user to display the report.
-            </p>
+            <div class="flex flex-col items-center text-center py-10">
+              <div class="w-16 h-16 rounded-2xl bg-base-200 grid place-items-center mb-3">
+                <i data-lucide="user-check" class="w-8 h-8 opacity-40"></i>
+              </div>
+              <p class="text-sm font-medium opacity-70">Select a user to display the report.</p>
+            </div>
           {{else if .Bars}}
             <div class="grid min-h-96 gap-4 md:grid-cols-[minmax(0,1fr)_12rem]">
               <div class="min-w-0">
@@ -77,10 +102,12 @@
               <div id="report-chart-legend" class="flex flex-col gap-2 text-sm md:pt-6"></div>
             </div>
           {{else}}
-            <p class="text-sm opacity-70 flex items-center gap-2">
-              <i data-lucide="circle-slash" class="w-4 h-4"></i>
-              No task occurrences found for this report.
-            </p>
+            <div class="flex flex-col items-center text-center py-10">
+              <div class="w-16 h-16 rounded-2xl bg-base-200 grid place-items-center mb-3">
+                <i data-lucide="circle-slash" class="w-8 h-8 opacity-40"></i>
+              </div>
+              <p class="text-sm font-medium opacity-70">No task occurrences found for this report.</p>
+            </div>
           {{end}}
         </div>
       </div>
