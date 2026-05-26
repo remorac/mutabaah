@@ -15,8 +15,9 @@ const CSRFFieldName = "_csrf"
 const CSRFHeaderName = "X-CSRF-Token"
 
 // maxCSRFMultipartBytes bounds multipart parsing done only to read the CSRF
-// field before a handler sees the request.
-const maxCSRFMultipartBytes = 6 << 20
+// field before a handler sees the request. Must accommodate the largest
+// allowed multipart upload (currently the 20 MiB avatar).
+const maxCSRFMultipartBytes = 21 << 20
 
 // CSRF gates state-changing requests: any non-safe method requires a valid
 // token tied to the current session. Safe methods (GET/HEAD/OPTIONS) pass

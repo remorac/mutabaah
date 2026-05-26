@@ -21,11 +21,12 @@ import (
 	"github.com/remorac/mutabaah/internal/services"
 )
 
-// maxAvatarBytes caps the request body for profile picture uploads.
-const maxAvatarBytes = 5 << 20
+// maxAvatarBytes caps the uploaded avatar file size after multipart extraction.
+const maxAvatarBytes = 20 << 20
 
-// maxAvatarRequestBytes leaves room for multipart overhead around a 5 MiB file.
-const maxAvatarRequestBytes = 6 << 20
+// maxAvatarRequestBytes caps the full multipart request body, leaving room
+// for multipart overhead around a 20 MiB file.
+const maxAvatarRequestBytes = 21 << 20
 
 // ProfileHandler renders and processes the self-service profile page.
 // Covers password change plus menses-period entries for users who want exempt
@@ -217,7 +218,7 @@ func (h *ProfileHandler) UploadPicture(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, maxAvatarRequestBytes)
 		if err := r.ParseMultipartForm(maxAvatarRequestBytes); err != nil {
 			h.logger.Warn("avatar upload rejected: parse multipart form", "user", user.ID, "err", err, "limit_bytes", maxAvatarRequestBytes)
-			h.renderUploadError(w, r, user, token, "Image must be 5 MB or smaller.", http.StatusRequestEntityTooLarge)
+			h.renderUploadError(w, r, user, token, "Image must be 20 MiB or smaller.", http.StatusRequestEntityTooLarge)
 			return
 		}
 	}
@@ -242,7 +243,7 @@ func (h *ProfileHandler) UploadPicture(w http.ResponseWriter, r *http.Request) {
 	}
 	if int64(len(data)) > maxAvatarBytes {
 		h.logger.Warn("avatar upload rejected: file too large", "user", user.ID, "bytes", len(data), "limit_bytes", maxAvatarBytes)
-		h.renderUploadError(w, r, user, token, "Image must be 5 MB or smaller.", http.StatusRequestEntityTooLarge)
+		h.renderUploadError(w, r, user, token, "Image must be 20 MiB or smaller.", http.StatusRequestEntityTooLarge)
 		return
 	}
 
