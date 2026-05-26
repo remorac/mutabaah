@@ -196,6 +196,19 @@
         <div class="flex-1">
           <span class="text-lg font-semibold">Mutaba'ah Yaumiyah</span>
         </div>
+        <div class="flex-none">
+          <a href="/settings/profile" class="btn btn-ghost btn-circle avatar" aria-label="Profile">
+            {{if .AvatarPath}}
+            <div class="w-9 rounded-full">
+              <img src="{{.AvatarPath}}" alt="{{.UserName}}" loading="lazy" />
+            </div>
+            {{else}}
+            <div class="w-9 rounded-full bg-accent text-accent-content grid place-items-center">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </div>
+            {{end}}
+          </a>
+        </div>
       </div>
 
       <main class="container mx-auto p-6 flex-1">
