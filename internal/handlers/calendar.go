@@ -93,7 +93,7 @@ func (h *CalendarHandler) Month(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := calendarPageView{
-		BaseView: NewBaseView(user, token, "Calendar — Mutaba'ah Tracker"),
+		BaseView: NewBaseView(user, token, "Calendar — Mutaba'ah Yaumiyah"),
 		Grid:     grid,
 		Day:      day,
 	}

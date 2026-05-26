@@ -74,7 +74,7 @@ func (e *ErrorPages) render(w http.ResponseWriter, r *http.Request, code int, ic
 		return
 	}
 	view := errorView{
-		BaseView: BaseView{Title: heading + " — Mutaba'ah Tracker"},
+		BaseView: BaseView{Title: heading + " — Mutaba'ah Yaumiyah"},
 		Code:     code,
 		Icon:     icon,
 		Tone:     tone,

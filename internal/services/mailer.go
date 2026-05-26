@@ -119,7 +119,7 @@ func passwordResetMessage(from, to, resetURL string) []byte {
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "From: %s\r\n", from)
 	fmt.Fprintf(&b, "To: %s\r\n", to)
-	fmt.Fprintf(&b, "Subject: Reset your Mutaba'ah Tracker password\r\n")
+	fmt.Fprintf(&b, "Subject: Reset your Mutaba'ah Yaumiyah password\r\n")
 	fmt.Fprintf(&b, "MIME-Version: 1.0\r\n")
 	fmt.Fprintf(&b, "Content-Type: text/plain; charset=UTF-8\r\n")
 	fmt.Fprintf(&b, "\r\n")

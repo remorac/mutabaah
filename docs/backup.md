@@ -1,6 +1,6 @@
 # MySQL backup strategy
 
-The Mutaba'ah Tracker stores everything that matters in MySQL — user accounts,
+The Mutaba'ah Yaumiyah stores everything that matters in MySQL — user accounts,
 task definitions, assignments, and completion history. The app itself is
 stateless beyond the templates baked into the binary, so the backup story is
 really a MySQL story.

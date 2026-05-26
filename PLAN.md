@@ -1,6 +1,6 @@
-# Mutaba'ah Tracker — Development Plan
+# Mutaba'ah Yaumiyah — Development Plan
 
-A phased plan for building the Mutaba'ah Tracker per [specification.txt](specification.txt). Each phase is independently executable; later phases assume earlier ones are complete but each phase ends in a runnable state.
+A phased plan for building the Mutaba'ah Yaumiyah per [specification.txt](specification.txt). Each phase is independently executable; later phases assume earlier ones are complete but each phase ends in a runnable state.
 
 ---
 

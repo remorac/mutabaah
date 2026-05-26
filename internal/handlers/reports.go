@@ -104,7 +104,7 @@ func (h *ReportHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view := reportPageView{
-		BaseView:        NewBaseView(current, token, "Report — Mutaba'ah Tracker"),
+		BaseView:        NewBaseView(current, token, "Report — Mutaba'ah Yaumiyah"),
 		MonthValue:      report.MonthValue,
 		MonthLabel:      report.MonthLabel,
 		GroupByTasks:    report.GroupByTasks,

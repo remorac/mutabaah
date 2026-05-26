@@ -1,4 +1,4 @@
-# Mutaba'ah Tracker
+# Mutaba'ah Yaumiyah
 
 A task tracker for Islamic practices (daily/weekly/monthly/yearly tarbiyah tasks). See [specification.txt](specification.txt) and [PLAN.md](PLAN.md).
 
