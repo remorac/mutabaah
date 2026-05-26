@@ -343,6 +343,18 @@
       });
     });
 
+    document.addEventListener("change", (event) => {
+      const checkbox = event.target.closest("[data-dashboard-missed-collapse]");
+      if (!checkbox || !checkbox.checked) return;
+
+      const group = checkbox.closest("[data-dashboard-missed-collapses]");
+      if (!group) return;
+
+      group.querySelectorAll("[data-dashboard-missed-collapse]").forEach((other) => {
+        if (other !== checkbox) other.checked = false;
+      });
+    });
+
     document.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-dashboard-toggle]");
       if (!button || button.disabled) return;

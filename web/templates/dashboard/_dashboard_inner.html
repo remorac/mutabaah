@@ -32,15 +32,18 @@
       <span class="text-sm font-normal opacity-60">— since Saturday</span>
     </h2>
     {{if .Missed}}
-    <div class="flex flex-col gap-3">
+    <div class="flex flex-col gap-3" data-dashboard-missed-collapses>
       {{range .Missed}}
-      <div class="card bg-base-100 shadow-sm border border-base-200">
-        <div class="card-body">
-          <h3 class="card-title text-sm uppercase tracking-wide opacity-70 font-bold flex items-center gap-2">
+      <div class="collapse collapse-arrow bg-base-100 shadow-sm border border-base-200">
+        <input type="checkbox" data-dashboard-missed-collapse />
+        <div class="collapse-title min-h-0 py-4 pr-12">
+          <h3 class="text-sm uppercase tracking-wide opacity-70 font-bold flex items-center gap-2">
             <i data-lucide="calendar" class="w-4 h-4"></i>
             {{.DateLabel}}
             <span class="badge badge-ghost badge-sm">{{len .Rows}}</span>
           </h3>
+        </div>
+        <div class="collapse-content">
           <ul class="flex flex-col mt-2">
             {{range .Rows}}{{template "_task_row.html" .}}{{end}}
           </ul>
