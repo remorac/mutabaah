@@ -16,6 +16,7 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) error
 	CreateTask(ctx context.Context, arg CreateTaskParams) (int64, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (int64, error)
+	DeleteCompletionsForUserOnDates(ctx context.Context, arg DeleteCompletionsForUserOnDatesParams) error
 	DeleteExpiredPasswordResetTokens(ctx context.Context) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteMensesPeriod(ctx context.Context, arg DeleteMensesPeriodParams) error

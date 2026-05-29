@@ -154,6 +154,7 @@ func main() {
 		r.Get("/settings/users/{id}/edit", settingsUsersHandler.EditForm)
 		r.Post("/settings/users/{id}", settingsUsersHandler.Update)
 		r.Post("/settings/users/{id}/delete", settingsUsersHandler.Delete)
+		r.Post("/settings/users/{id}/reset-data", settingsUsersHandler.ResetData)
 	})
 
 	srv := &http.Server{

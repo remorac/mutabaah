@@ -7,8 +7,35 @@ package repository
 
 import (
 	"context"
+	"strings"
 	"time"
 )
+
+const deleteCompletionsForUserOnDates = `-- name: DeleteCompletionsForUserOnDates :exec
+DELETE FROM task_completions
+WHERE user_id = ? AND due_date IN (/*SLICE:due_dates*/?)
+`
+
+type DeleteCompletionsForUserOnDatesParams struct {
+	UserID   int64       `json:"user_id"`
+	DueDates []time.Time `json:"due_dates"`
+}
+
+func (q *Queries) DeleteCompletionsForUserOnDates(ctx context.Context, arg DeleteCompletionsForUserOnDatesParams) error {
+	query := deleteCompletionsForUserOnDates
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.UserID)
+	if len(arg.DueDates) > 0 {
+		for _, v := range arg.DueDates {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:due_dates*/?", strings.Repeat(",?", len(arg.DueDates))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:due_dates*/?", "NULL", 1)
+	}
+	_, err := q.db.ExecContext(ctx, query, queryParams...)
+	return err
+}
 
 const getCompletion = `-- name: GetCompletion :one
 SELECT id, task_id, user_id, due_date, completed_at, created_at

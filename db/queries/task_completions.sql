@@ -22,3 +22,7 @@ SELECT id, task_id, user_id, due_date, completed_at, created_at
 FROM task_completions
 WHERE user_id = ? AND due_date BETWEEN ? AND ?
 ORDER BY due_date ASC;
+
+-- name: DeleteCompletionsForUserOnDates :exec
+DELETE FROM task_completions
+WHERE user_id = ? AND due_date IN (sqlc.slice('due_dates'));

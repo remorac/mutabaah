@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -37,6 +38,12 @@ type userListRow struct {
 	Role      string
 	CreatedAt string
 	IsSelf    bool
+	ResetURL  string
+}
+
+type resetDateOption struct {
+	Value string
+	Label string
 }
 
 type userListView struct {
@@ -50,6 +57,7 @@ type userListView struct {
 	PrevURL     string
 	NextURL     string
 	FlashNotice string
+	ResetDates  []resetDateOption
 }
 
 type userFormView struct {
@@ -95,6 +103,16 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 			Role:      string(u.Role),
 			CreatedAt: u.CreatedAt.Format("2006-01-02"),
 			IsSelf:    u.ID == current.ID,
+			ResetURL:  "/settings/users/" + strconv.FormatInt(u.ID, 10) + "/reset-data",
+		})
+	}
+
+	weekDates := services.WeekDatesSinceSaturday(time.Now())
+	resetDates := make([]resetDateOption, 0, len(weekDates))
+	for _, d := range weekDates {
+		resetDates = append(resetDates, resetDateOption{
+			Value: d.Format("2006-01-02"),
+			Label: d.Format("Mon, Jan 2"),
 		})
 	}
 
@@ -113,6 +131,7 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 		HasNext:    page < totalPages,
 		PrevURL:    "/settings/users?page=" + strconv.Itoa(page-1),
 		NextURL:    "/settings/users?page=" + strconv.Itoa(page+1),
+		ResetDates: resetDates,
 	}
 	if err := h.tmpl.Render(w, "settings/users/index.html", view); err != nil {
 		h.logger.Error("render users list", "err", err)
@@ -299,6 +318,50 @@ func (h *SettingsUsersHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.logger.Info("user deleted", "id", id, "by", current.ID)
+	http.Redirect(w, r, "/settings/users", http.StatusSeeOther)
+}
+
+// ResetData deletes a user's task completions on a set of dates submitted as
+// repeated "dates" form fields. The service rejects dates outside the current
+// Saturday-through-today window.
+func (h *SettingsUsersHandler) ResetData(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	current, _ := apmw.UserFromContext(r.Context())
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	raw := r.PostForm["dates"]
+	dates := make([]time.Time, 0, len(raw))
+	for _, s := range raw {
+		if s == "" {
+			continue
+		}
+		d, err := time.ParseInLocation("2006-01-02", s, services.AppLocation)
+		if err != nil {
+			http.Error(w, "bad date", http.StatusBadRequest)
+			return
+		}
+		dates = append(dates, d)
+	}
+	if err := h.users.ResetCompletions(r.Context(), id, dates); err != nil {
+		var ve *services.ValidationError
+		if errors.As(err, &ve) {
+			http.Error(w, "invalid dates", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, services.ErrUserNotFound) {
+			h.errs.NotFound(w, r)
+			return
+		}
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	h.logger.Info("user completions reset", "id", id, "by", current.ID, "count", len(dates))
 	http.Redirect(w, r, "/settings/users", http.StatusSeeOther)
 }
 

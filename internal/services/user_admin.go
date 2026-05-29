@@ -155,6 +155,54 @@ func (s *UserAdminService) Update(ctx context.Context, id int64, in UserInput) e
 	return nil
 }
 
+// WeekDatesSinceSaturday returns the date list from the most recent Saturday
+// through "now", evaluated in AppLocation. Dates are DATE-only (midnight UTC),
+// in chronological order. When "now" is a Saturday, the returned list contains
+// only today, matching the dashboard's current-week window.
+func WeekDatesSinceSaturday(now time.Time) []time.Time {
+	local := now.In(AppLocation)
+	stepsBack := int(local.Weekday()-time.Saturday+7) % 7
+	start := dateOnly(local.AddDate(0, 0, -stepsBack))
+	out := make([]time.Time, 0, stepsBack+1)
+	for i := 0; i <= stepsBack; i++ {
+		out = append(out, start.AddDate(0, 0, i))
+	}
+	return out
+}
+
+// ResetCompletions deletes task_completions rows for the given user on the
+// given dates. Every submitted date must fall inside the current
+// Saturday-through-today window — anything else is rejected as a validation
+// error so admins can't accidentally erase older history. An empty dates slice
+// is a no-op.
+func (s *UserAdminService) ResetCompletions(ctx context.Context, userID int64, dates []time.Time) error {
+	if _, err := s.q.GetUserByID(ctx, userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+	if len(dates) == 0 {
+		return nil
+	}
+	allowed := map[string]struct{}{}
+	for _, d := range WeekDatesSinceSaturday(time.Now()) {
+		allowed[d.Format("2006-01-02")] = struct{}{}
+	}
+	cleaned := make([]time.Time, 0, len(dates))
+	for _, d := range dates {
+		day := dateOnly(d)
+		if _, ok := allowed[day.Format("2006-01-02")]; !ok {
+			return &ValidationError{Fields: map[string]string{"dates": "Date out of allowed range."}}
+		}
+		cleaned = append(cleaned, day)
+	}
+	return s.q.DeleteCompletionsForUserOnDates(ctx, repository.DeleteCompletionsForUserOnDatesParams{
+		UserID:   userID,
+		DueDates: cleaned,
+	})
+}
+
 // Delete removes a user. FK cascades drop their sessions, assignments, and
 // completion history. Refuses to delete the last admin.
 func (s *UserAdminService) Delete(ctx context.Context, id int64) error {
