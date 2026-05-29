@@ -354,12 +354,14 @@ func drawReportPDFMatrixTable(p *simplePDF, weekLabel, monthLabel string, days [
 	dayWidth := (pdfPageWidth - pdfMargin*2 - taskWidth) / 7.0
 
 	drawHeader := func() {
+		headerLabelY := y + 12
+		headerDateY := y + 1
 		p.topRoundedRect(pdfMargin, y-4, pdfPageWidth-pdfMargin*2, rowHeight, 5, 0.78, 0.86, 0.96)
-		p.centeredBoldText(pdfMargin, y+8, taskWidth, 9, "TASK")
+		p.centeredBoldText(pdfMargin, y+6, taskWidth, 9, "TASK")
 		for i, day := range days {
 			x := pdfMargin + taskWidth + float64(i)*dayWidth
-			p.centeredText(x, y+15, dayWidth, 7, strings.ToUpper(day.Label))
-			p.centeredBoldText(x, y+5, dayWidth, 8, strings.ToUpper(day.ShortDate))
+			p.centeredBoldText(x, headerLabelY, dayWidth, 7, strings.ToUpper(day.Label))
+			p.centeredText(x, headerDateY, dayWidth, 8, strings.ToUpper(day.ShortDate))
 		}
 		y -= rowHeight
 	}
