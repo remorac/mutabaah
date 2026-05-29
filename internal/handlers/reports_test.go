@@ -580,13 +580,13 @@ func TestBuildReportPDFContainsPercentageChartAndStatusMatrix(t *testing.T) {
 			{Label: "Week 5", SubLabel: "25 May - 31 May", UserName: "Amina", Completed: 1, Total: 2, Percent: 50},
 		},
 		WeekDays: []reportWeekDayView{
-			{ShortDate: "25 May"},
-			{ShortDate: "26 May"},
-			{ShortDate: "27 May"},
-			{ShortDate: "28 May"},
-			{ShortDate: "29 May"},
-			{ShortDate: "30 May"},
-			{ShortDate: "31 May"},
+			{Label: "Mon", ShortDate: "25 May"},
+			{Label: "Tue", ShortDate: "26 May"},
+			{Label: "Wed", ShortDate: "27 May"},
+			{Label: "Thu", ShortDate: "28 May"},
+			{Label: "Fri", ShortDate: "29 May"},
+			{Label: "Sat", ShortDate: "30 May"},
+			{Label: "Sun", ShortDate: "31 May"},
 		},
 		TaskRows: []reportTaskRowView{
 			{
@@ -612,11 +612,14 @@ func TestBuildReportPDFContainsPercentageChartAndStatusMatrix(t *testing.T) {
 		[]byte("Completion"),
 		[]byte("100"),
 		[]byte("Week 5"),
-		[]byte(`Week 5 \(50%\)`),
+		[]byte(`\(50%\)`),
 		[]byte("25 May - 31 May"),
 		[]byte("Dhikr"),
 		[]byte("Morning adhkar"),
-		[]byte("26 May"),
+		[]byte("TASK"),
+		[]byte("TUE"),
+		[]byte("26 MAY"),
+		[]byte("/F2"),
 		[]byte("Amina"),
 	} {
 		if !bytes.Contains(pdf, want) {

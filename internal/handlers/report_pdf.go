@@ -41,7 +41,7 @@ func (p *simplePDF) finish() []byte {
 	var out bytes.Buffer
 	_, _ = out.WriteString("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
 
-	objectCount := 3 + len(p.pages)*2
+	objectCount := 4 + len(p.pages)*2
 	offsets := make([]int, objectCount+1)
 	writeObj := func(id int, body string) {
 		offsets[id] = out.Len()
@@ -50,17 +50,18 @@ func (p *simplePDF) finish() []byte {
 
 	kids := make([]string, 0, len(p.pages))
 	for i := range p.pages {
-		kids = append(kids, fmt.Sprintf("%d 0 R", 4+i*2))
+		kids = append(kids, fmt.Sprintf("%d 0 R", 5+i*2))
 	}
 
 	writeObj(1, "<< /Type /Catalog /Pages 2 0 R >>")
 	writeObj(2, fmt.Sprintf("<< /Type /Pages /Kids [%s] /Count %d >>", strings.Join(kids, " "), len(p.pages)))
 	writeObj(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+	writeObj(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
 
 	for i, stream := range p.pages {
-		pageID := 4 + i*2
+		pageID := 5 + i*2
 		contentID := pageID + 1
-		writeObj(pageID, fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Resources << /Font << /F1 3 0 R >> >> /Contents %d 0 R >>", pdfPageWidth, pdfPageHeight, contentID))
+		writeObj(pageID, fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>", pdfPageWidth, pdfPageHeight, contentID))
 		writeObj(contentID, fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream", len(stream), stream))
 	}
 
@@ -74,14 +75,44 @@ func (p *simplePDF) finish() []byte {
 }
 
 func (p *simplePDF) text(x, y, size float64, value string) {
+	p.fontText("F1", x, y, size, value)
+}
+
+func (p *simplePDF) mutedText(x, y, size float64, value string) {
+	p.colorFontText("F1", x, y, size, value, 0.39, 0.45, 0.55)
+}
+
+func (p *simplePDF) boldText(x, y, size float64, value string) {
+	p.fontText("F2", x, y, size, value)
+}
+
+func (p *simplePDF) fontText(font string, x, y, size float64, value string) {
+	p.colorFontText(font, x, y, size, value, 0.09, 0.12, 0.16)
+}
+
+func (p *simplePDF) colorFontText(font string, x, y, size float64, value string, r, g, b float64) {
 	value = sanitizePDFText(value)
-	_, _ = fmt.Fprintf(&p.buf, "0.09 0.12 0.16 rg BT /F1 %.2f Tf %.2f %.2f Td (%s) Tj ET\n", size, x, y, escapePDFString(value))
+	_, _ = fmt.Fprintf(&p.buf, "%.3f %.3f %.3f rg BT /%s %.2f Tf %.2f %.2f Td (%s) Tj ET\n", r, g, b, font, size, x, y, escapePDFString(value))
 }
 
 func (p *simplePDF) centeredText(x, y, width, size float64, value string) {
+	p.centeredFontText("F1", x, y, width, size, value)
+}
+
+func (p *simplePDF) centeredBoldText(x, y, width, size float64, value string) {
+	p.centeredFontText("F2", x, y, width, size, value)
+}
+
+func (p *simplePDF) centeredFontText(font string, x, y, width, size float64, value string) {
 	value = sanitizePDFText(value)
 	textWidth := float64(len(value)) * size * 0.48
-	p.text(x+(width-textWidth)/2, y, size, value)
+	p.fontText(font, x+(width-textWidth)/2, y, size, value)
+}
+
+func (p *simplePDF) rightMutedText(x, y, width, size float64, value string) {
+	value = sanitizePDFText(value)
+	textWidth := float64(len(value)) * size * 0.48
+	p.colorFontText("F1", x+width-textWidth, y, size, value, 0.39, 0.45, 0.55)
 }
 
 func (p *simplePDF) line(x1, y1, x2, y2 float64) {
@@ -90,6 +121,10 @@ func (p *simplePDF) line(x1, y1, x2, y2 float64) {
 
 func (p *simplePDF) colorLine(x1, y1, x2, y2 float64, r, g, b float64) {
 	_, _ = fmt.Fprintf(&p.buf, "%.3f %.3f %.3f RG %.2f %.2f m %.2f %.2f l S\n", r, g, b, x1, y1, x2, y2)
+}
+
+func (p *simplePDF) mutedLine(x1, y1, x2, y2 float64) {
+	p.colorLine(x1, y1, x2, y2, 0.86, 0.89, 0.93)
 }
 
 func (p *simplePDF) circle(x, y, radius float64, r, g, b float64) {
@@ -180,19 +215,19 @@ func buildReportPDF(report reportData) ([]byte, error) {
 
 	if len(report.Bars) > 0 {
 		y = drawReportPDFChart(p, report.Bars, y)
-		y -= 8
+		y -= 14
 	} else {
 		p.text(pdfMargin, y, 11, "No task occurrences found for this report.")
-		y -= 26
+		y -= 32
 	}
 
 	if y < pdfMargin+80 {
 		p.newPage()
 		y = pdfPageHeight - pdfMargin
 	}
-	p.text(pdfMargin, y, 14, report.WeekLabel)
+	drawReportPDFTableTitle(p, pdfMargin, y, pdfPageWidth-pdfMargin*2, report.WeekLabel, report.MonthLabel)
 	y -= 34
-	drawReportPDFMatrixTable(p, report.WeekLabel, report.WeekDays, report.TaskRows, y)
+	drawReportPDFMatrixTable(p, report.WeekLabel, report.MonthLabel, report.WeekDays, report.TaskRows, y)
 
 	return p.finish(), nil
 }
@@ -212,7 +247,7 @@ func drawReportPDFHeader(p *simplePDF, report reportData, y float64) float64 {
 		headerName = "Report"
 	}
 	p.text(left+16, top-46, 20, headerName)
-	p.text(left+16, top-64, 11, fmt.Sprintf("%s | %s", report.WeekRangeLabel, report.MonthLabel))
+	p.text(left+16, top-64, 11, report.WeekRangeLabel)
 
 	chipY := top - 66
 	chipWidth := 72.0
@@ -225,9 +260,9 @@ func drawReportPDFHeader(p *simplePDF, report reportData, y float64) float64 {
 }
 
 func drawReportPDFChip(p *simplePDF, x, y, width float64, label, value string, r, g, b float64) {
-	p.roundedRect(x, y, width, 32, 5, r, g, b)
-	p.text(x+8, y+19, 8, label)
-	p.text(x+8, y+7, 13, value)
+	p.roundedRect(x, y, width, 36, 5, r, g, b)
+	p.mutedText(x+8, y+23, 8, label)
+	p.boldText(x+8, y+7, 13, value)
 }
 
 type reportPDFChartBar struct {
@@ -252,10 +287,13 @@ func drawReportPDFChart(p *simplePDF, bars []reportBarView, y float64) float64 {
 	p.strokeRect(left, bottom, width, height)
 	for tick := 0; tick <= 100; tick += 10 {
 		tickY := bottom + height*float64(tick)/100.0
+		if tick > 0 && tick < 100 {
+			p.mutedLine(left, tickY, left+width, tickY)
+		}
 		p.text(pdfMargin, tickY-3, 7, fmt.Sprintf("%d", tick))
 	}
 
-	gap := 4.0
+	gap := 6.0
 	barWidth := (width - gap*float64(maxBars+1)) / float64(maxBars)
 	if barWidth < 4 {
 		barWidth = 4
@@ -267,9 +305,7 @@ func drawReportPDFChart(p *simplePDF, bars []reportBarView, y float64) float64 {
 			p.topRoundedRect(x, bottom, barWidth, barHeight, 3, 0.31, 0.48, 0.65)
 		}
 		if maxBars <= 14 || i%2 == 0 {
-			label := truncatePDFText(fmt.Sprintf("%s (%d%%)", bar.Label, bar.Percent), 16)
-			labelWidth := float64(len(label)) * 3.5
-			p.text(x+barWidth/2-labelWidth/2, bottom-13, 7, label)
+			drawReportPDFChartLabel(p, x+barWidth/2, bottom-13, bar)
 		}
 	}
 
@@ -280,17 +316,35 @@ func drawReportPDFChart(p *simplePDF, bars []reportBarView, y float64) float64 {
 	return bottom - 28
 }
 
-func drawReportPDFMatrixTable(p *simplePDF, heading string, days []reportWeekDayView, rows []reportTaskRowView, y float64) {
+func drawReportPDFChartLabel(p *simplePDF, centerX, y float64, bar reportPDFChartBar) {
+	name := truncatePDFText(bar.Label, 8)
+	value := fmt.Sprintf("(%d%%)", bar.Percent)
+	nameWidth := float64(len(name)) * 7 * 0.48
+	gapWidth := 7 * 0.72
+	valueWidth := float64(len(value)) * 7 * 0.48
+	x := centerX - (nameWidth+gapWidth+valueWidth)/2
+	p.text(x, y, 7, name)
+	p.boldText(x+nameWidth+gapWidth, y, 7, value)
+}
+
+func drawReportPDFTableTitle(p *simplePDF, x, y, width float64, weekLabel, monthLabel string) {
+	titleInset := 6.0
+	p.text(x, y, 14, weekLabel)
+	p.rightMutedText(x, y, width-titleInset, 14, monthLabel)
+}
+
+func drawReportPDFMatrixTable(p *simplePDF, weekLabel, monthLabel string, days []reportWeekDayView, rows []reportTaskRowView, y float64) {
 	rowHeight := 30.0
 	taskWidth := 158.0
 	dayWidth := (pdfPageWidth - pdfMargin*2 - taskWidth) / 7.0
 
 	drawHeader := func() {
 		p.topRoundedRect(pdfMargin, y-4, pdfPageWidth-pdfMargin*2, rowHeight, 5, 0.78, 0.86, 0.96)
-		p.centeredText(pdfMargin, y+8, taskWidth, 9, "Task")
+		p.centeredBoldText(pdfMargin, y+8, taskWidth, 9, "TASK")
 		for i, day := range days {
 			x := pdfMargin + taskWidth + float64(i)*dayWidth
-			p.centeredText(x, y+8, dayWidth, 8, day.ShortDate)
+			p.centeredText(x, y+15, dayWidth, 7, strings.ToUpper(day.Label))
+			p.centeredBoldText(x, y+5, dayWidth, 8, strings.ToUpper(day.ShortDate))
 		}
 		y -= rowHeight
 	}
@@ -304,7 +358,7 @@ func drawReportPDFMatrixTable(p *simplePDF, heading string, days []reportWeekDay
 		if y < pdfMargin+rowHeight {
 			p.newPage()
 			y = pdfPageHeight - pdfMargin
-			p.text(pdfMargin, y, 14, heading)
+			drawReportPDFTableTitle(p, pdfMargin, y, pdfPageWidth-pdfMargin*2, weekLabel, monthLabel)
 			y -= 22
 			drawHeader()
 		}
@@ -314,7 +368,7 @@ func drawReportPDFMatrixTable(p *simplePDF, heading string, days []reportWeekDay
 		}
 		p.text(pdfMargin+4, y+14, 9, truncatePDFText(row.TaskName, 24))
 		if row.Description != "" {
-			p.text(pdfMargin+4, y+3, 7, truncatePDFText(row.Description, 30))
+			p.mutedText(pdfMargin+4, y+3, 7, truncatePDFText(row.Description, 30))
 		}
 		for i, cell := range row.Cells {
 			if !cell.Scheduled {
