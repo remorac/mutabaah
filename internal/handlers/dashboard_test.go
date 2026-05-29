@@ -75,33 +75,43 @@ func TestShowInMissedSection(t *testing.T) {
 	}
 }
 
-func TestSaturdayWeekStart(t *testing.T) {
+func TestWeekStartFor(t *testing.T) {
 	tests := []struct {
-		name string
-		day  time.Time
-		want time.Time
+		name     string
+		day      time.Time
+		startDay time.Weekday
+		want     time.Time
 	}{
 		{
-			name: "saturday starts same day",
-			day:  dashboardDate(2026, 5, 23),
-			want: dashboardDate(2026, 5, 23),
+			name:     "saturday starts same day",
+			day:      dashboardDate(2026, 5, 23),
+			startDay: time.Saturday,
+			want:     dashboardDate(2026, 5, 23),
 		},
 		{
-			name: "monday starts previous saturday",
-			day:  dashboardDate(2026, 5, 25),
-			want: dashboardDate(2026, 5, 23),
+			name:     "monday starts previous saturday",
+			day:      dashboardDate(2026, 5, 25),
+			startDay: time.Saturday,
+			want:     dashboardDate(2026, 5, 23),
 		},
 		{
-			name: "friday starts previous saturday",
-			day:  dashboardDate(2026, 5, 29),
-			want: dashboardDate(2026, 5, 23),
+			name:     "friday starts previous saturday",
+			day:      dashboardDate(2026, 5, 29),
+			startDay: time.Saturday,
+			want:     dashboardDate(2026, 5, 23),
+		},
+		{
+			name:     "sunday start",
+			day:      dashboardDate(2026, 5, 29),
+			startDay: time.Sunday,
+			want:     dashboardDate(2026, 5, 24),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := saturdayWeekStart(tt.day); !got.Equal(tt.want) {
-				t.Fatalf("saturdayWeekStart() = %s, want %s", got.Format("2006-01-02"), tt.want.Format("2006-01-02"))
+			if got := services.WeekStartFor(tt.day, tt.startDay); !got.Equal(tt.want) {
+				t.Fatalf("WeekStartFor() = %s, want %s", got.Format("2006-01-02"), tt.want.Format("2006-01-02"))
 			}
 		})
 	}

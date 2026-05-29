@@ -16,16 +16,17 @@ import (
 // service call, then buckets them into day cells. Each cell carries a
 // completion ratio used to render a heatmap-style intensity.
 type CalendarHandler struct {
-	auth   *services.AuthService
-	tasks  *services.TaskService
-	tmpl   *Templates
-	errs   *ErrorPages
-	logger *slog.Logger
-	now    func() time.Time
+	auth     *services.AuthService
+	tasks    *services.TaskService
+	settings *services.AppSettingsService
+	tmpl     *Templates
+	errs     *ErrorPages
+	logger   *slog.Logger
+	now      func() time.Time
 }
 
-func NewCalendarHandler(auth *services.AuthService, tasks *services.TaskService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *CalendarHandler {
-	return &CalendarHandler{auth: auth, tasks: tasks, tmpl: tmpl, errs: errs, logger: logger, now: time.Now}
+func NewCalendarHandler(auth *services.AuthService, tasks *services.TaskService, settings *services.AppSettingsService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *CalendarHandler {
+	return &CalendarHandler{auth: auth, tasks: tasks, settings: settings, tmpl: tmpl, errs: errs, logger: logger, now: time.Now}
 }
 
 type calendarCellView struct {
@@ -80,8 +81,13 @@ func (h *CalendarHandler) Month(w http.ResponseWriter, r *http.Request) {
 
 	today := todayFor(h.now)
 	month := parseMonth(r.URL.Query().Get("month"), today)
+	settings, err := h.settings.Get(r.Context())
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
 
-	grid, err := h.buildGrid(r, user.ID, month, today)
+	grid, err := h.buildGrid(r, user.ID, month, today, settings.WeekStartDay)
 	if err != nil {
 		h.errs.ServerError(w, r, err)
 		return
@@ -163,14 +169,14 @@ func calendarDayFromOccurrences(date time.Time, occs []services.TaskOccurrence) 
 	return view
 }
 
-func (h *CalendarHandler) buildGrid(r *http.Request, userID int64, month, today time.Time) (calendarGridView, error) {
+func (h *CalendarHandler) buildGrid(r *http.Request, userID int64, month, today time.Time, weekStartDay time.Weekday) (calendarGridView, error) {
 	monthStart := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
 	monthEnd := monthStart.AddDate(0, 1, -1)
 
-	// Visible window: pad to whole weeks (Sun..Sat).
-	leading := int(monthStart.Weekday()) // Sunday = 0
+	// Visible window: pad to whole configured weeks.
+	leading := (int(monthStart.Weekday()) - int(weekStartDay) + 7) % 7
 	gridStart := monthStart.AddDate(0, 0, -leading)
-	trailing := 6 - int(monthEnd.Weekday())
+	trailing := (int(weekStartDay) + 6 - int(monthEnd.Weekday()) + 7) % 7
 	gridEnd := monthEnd.AddDate(0, 0, trailing)
 
 	occs, err := h.tasks.OccurrencesBetweenAsOf(r.Context(), userID, gridStart, gridEnd, today)
@@ -204,7 +210,7 @@ func (h *CalendarHandler) buildGrid(r *http.Request, userID int64, month, today 
 		NextMonth:  next.Format("2006-01"),
 		TodayMonth: today.Format("2006-01"),
 		Selected:   today.Format("2006-01-02"),
-		Weekdays:   []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},
+		Weekdays:   services.WeekdayLabels(weekStartDay),
 	}
 
 	var week []calendarCellView

@@ -214,6 +214,15 @@
       <main class="container mx-auto p-6 flex-1">
         {{template "content" .}}
       </main>
+
+      {{if .FlashNotice}}
+      <div class="toast toast-end toast-bottom z-50">
+        <div role="status" class="alert alert-success shadow-lg">
+          <i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i>
+          <span class="text-sm font-medium">{{.FlashNotice}}</span>
+        </div>
+      </div>
+      {{end}}
     </div>
 
     <aside class="drawer-side z-40">
@@ -245,18 +254,24 @@
               Calendar
             </a>
           </li>
-          {{if eq .UserRole "admin"}}
-          <li class="menu-title mt-4 px-3 text-[0.7rem] font-bold uppercase tracking-wide text-base-content/45">Admin</li>
-          <li>
-            <a href="/settings/tasks" data-nav-link>
-              <i data-lucide="list-checks" class="w-4 h-4"></i>
-              Tasks
-            </a>
-          </li>
           <li>
             <a href="/reports" data-nav-link>
               <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
               Report
+            </a>
+          </li>
+          {{if eq .UserRole "admin"}}
+          <li class="menu-title mt-4 px-3 text-[0.7rem] font-bold uppercase tracking-wide text-base-content/45">Admin</li>
+          <li>
+            <a href="/settings/app" data-nav-link>
+              <i data-lucide="settings" class="w-4 h-4"></i>
+              Settings
+            </a>
+          </li>
+          <li>
+            <a href="/settings/tasks" data-nav-link>
+              <i data-lucide="list-checks" class="w-4 h-4"></i>
+              Tasks
             </a>
           </li>
           <li>

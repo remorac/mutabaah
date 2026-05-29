@@ -16,17 +16,18 @@ import (
 )
 
 type ReportHandler struct {
-	auth   *services.AuthService
-	tasks  *services.TaskService
-	users  *services.UserAdminService
-	tmpl   *Templates
-	errs   *ErrorPages
-	logger *slog.Logger
-	now    func() time.Time
+	auth     *services.AuthService
+	tasks    *services.TaskService
+	users    *services.UserAdminService
+	settings *services.AppSettingsService
+	tmpl     *Templates
+	errs     *ErrorPages
+	logger   *slog.Logger
+	now      func() time.Time
 }
 
-func NewReportHandler(auth *services.AuthService, tasks *services.TaskService, users *services.UserAdminService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *ReportHandler {
-	return &ReportHandler{auth: auth, tasks: tasks, users: users, tmpl: tmpl, errs: errs, logger: logger, now: time.Now}
+func NewReportHandler(auth *services.AuthService, tasks *services.TaskService, users *services.UserAdminService, settings *services.AppSettingsService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *ReportHandler {
+	return &ReportHandler{auth: auth, tasks: tasks, users: users, settings: settings, tmpl: tmpl, errs: errs, logger: logger, now: time.Now}
 }
 
 type reportUserOption struct {
@@ -73,9 +74,12 @@ type reportPageView struct {
 	BaseView
 	WeekValue       string
 	WeekDateValue   string
+	WeekDateMin     string
+	WeekDateStep    int
 	WeekLabel       string
 	WeekRangeLabel  string
 	MonthLabel      string
+	CanFilterUsers  bool
 	HasSelectedUser bool
 	UserOptions     []reportUserOption
 	Bars            []reportBarView
@@ -112,9 +116,12 @@ type reportData struct {
 	WeekEnd          time.Time
 	WeekValue        string
 	WeekDateValue    string
+	WeekDateMin      string
+	WeekDateStep     int
 	WeekLabel        string
 	WeekRangeLabel   string
 	MonthLabel       string
+	CanFilterUsers   bool
 	HasSelectedUser  bool
 	SelectedUserName string
 	UserOptions      []reportUserOption
@@ -126,7 +133,7 @@ type reportData struct {
 	TotalPct         int
 }
 
-// Show renders the admin reports page.
+// Show renders the reports page.
 func (h *ReportHandler) Show(w http.ResponseWriter, r *http.Request) {
 	current, _ := apmw.UserFromContext(r.Context())
 	sid := apmw.SessionIDFromContext(r.Context())
@@ -141,9 +148,12 @@ func (h *ReportHandler) Show(w http.ResponseWriter, r *http.Request) {
 		BaseView:        NewBaseView(current, token, "Report — Mutaba'ah Yaumiyah"),
 		WeekValue:       report.WeekValue,
 		WeekDateValue:   report.WeekDateValue,
+		WeekDateMin:     report.WeekDateMin,
+		WeekDateStep:    report.WeekDateStep,
 		WeekLabel:       report.WeekLabel,
 		WeekRangeLabel:  report.WeekRangeLabel,
 		MonthLabel:      report.MonthLabel,
+		CanFilterUsers:  report.CanFilterUsers,
 		HasSelectedUser: report.HasSelectedUser,
 		UserOptions:     report.UserOptions,
 		Bars:            report.Bars,
@@ -183,9 +193,13 @@ func (h *ReportHandler) ExportPDF(w http.ResponseWriter, r *http.Request) {
 
 func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 	today := todayFor(h.now)
-	weekStart, weekValue := parseReportWeek(r.URL.Query().Get("week_start"), today)
+	settings, err := h.settings.Get(r.Context())
+	if err != nil {
+		return reportData{}, err
+	}
+	weekStart, weekValue := parseReportWeek(r.URL.Query().Get("week_start"), today, settings.WeekStartDay)
 	if r.URL.Query().Get("week_start") == "" {
-		weekStart, weekValue = parseReportWeek(r.URL.Query().Get("week"), today)
+		weekStart, weekValue = parseReportWeek(r.URL.Query().Get("week"), today, settings.WeekStartDay)
 	}
 	weekEnd := weekStart.AddDate(0, 0, 6)
 	monthStart := time.Date(weekStart.Year(), weekStart.Month(), 1, 0, 0, 0, 0, time.UTC)
@@ -195,12 +209,22 @@ func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 		queryEnd = weekEnd
 	}
 
-	allUsers, _, err := h.users.List(r.Context(), 0, 0)
-	if err != nil {
-		return reportData{}, err
-	}
 	current, _ := apmw.UserFromContext(r.Context())
-	selectedUsers, options, hasSelectedUser := selectedReportUsers(allUsers, r.URL.Query()["user_id"], current.ID)
+
+	var selectedUsers []repository.User
+	var options []reportUserOption
+	var hasSelectedUser bool
+	canFilterUsers := current.Role == repository.UsersRoleAdmin
+	if canFilterUsers {
+		allUsers, _, err := h.users.List(r.Context(), 0, 0)
+		if err != nil {
+			return reportData{}, err
+		}
+		selectedUsers, options, hasSelectedUser = selectedReportUsersForCurrent(current, allUsers, r.URL.Query()["user_id"])
+	} else {
+		selectedUsers, options, hasSelectedUser = selectedReportUsersForCurrent(current, nil, r.URL.Query()["user_id"])
+	}
+
 	var selectedUserName string
 	if len(selectedUsers) > 0 {
 		selectedUserName = selectedUsers[0].Name
@@ -215,17 +239,20 @@ func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 		sets = append(sets, reportOccurrenceSet{User: u, Occurrences: occs})
 	}
 
-	bars, _, _ := buildReportBars(monthStart, monthEnd, today, sets)
+	bars, _, _ := buildReportBars(monthStart, monthEnd, today, settings.WeekStartDay, sets)
 	weekDays, taskRows, done, due := buildReportMatrix(weekStart, weekEnd, today, sets)
-	weekLabel, weekRangeLabel := selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd)
+	weekLabel, weekRangeLabel := selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd, settings.WeekStartDay)
 	return reportData{
 		WeekStart:        weekStart,
 		WeekEnd:          weekEnd,
 		WeekValue:        weekValue,
 		WeekDateValue:    weekStart.Format("2006-01-02"),
+		WeekDateMin:      reportDateInputMin(settings.WeekStartDay),
+		WeekDateStep:     7,
 		WeekLabel:        weekLabel,
 		WeekRangeLabel:   weekRangeLabel,
 		MonthLabel:       monthStart.Format("January 2006"),
+		CanFilterUsers:   canFilterUsers,
 		HasSelectedUser:  hasSelectedUser,
 		SelectedUserName: selectedUserName,
 		UserOptions:      options,
@@ -292,9 +319,14 @@ func reportChartJSON(bars []reportBarView) template.JS {
 	return template.JS(b)
 }
 
-func parseReportWeek(s string, fallback time.Time) (time.Time, string) {
+func reportDateInputMin(weekStartDay time.Weekday) string {
+	baseSunday := time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC)
+	return baseSunday.AddDate(0, 0, int(weekStartDay)).Format("2006-01-02")
+}
+
+func parseReportWeek(s string, fallback time.Time, weekStartDay time.Weekday) (time.Time, string) {
 	if selected, err := time.ParseInLocation("2006-01-02", s, time.UTC); err == nil {
-		start := weekStartFor(selected)
+		start := services.WeekStartFor(selected, weekStartDay)
 		return start, reportWeekValue(start)
 	}
 	if len(s) == len("2006-W02") && s[4] == '-' && s[5] == 'W' {
@@ -302,13 +334,13 @@ func parseReportWeek(s string, fallback time.Time) (time.Time, string) {
 		week, weekErr := strconv.Atoi(s[6:])
 		if yearErr == nil && weekErr == nil {
 			if isoStart, ok := isoWeekStart(year, week); ok {
-				start := weekStartFor(isoStart)
+				start := services.WeekStartFor(isoStart, weekStartDay)
 				return start, reportWeekValue(start)
 			}
 		}
 	}
 	fallback = fallback.In(services.AppLocation)
-	start := weekStartFor(dateOnly(fallback))
+	start := services.WeekStartFor(dateOnly(fallback), weekStartDay)
 	return start, reportWeekValue(start)
 }
 
@@ -328,12 +360,6 @@ func isoWeekStart(year, week int) (time.Time, bool) {
 func reportWeekValue(start time.Time) string {
 	year, week := start.AddDate(0, 0, 2).ISOWeek()
 	return fmt.Sprintf("%04d-W%02d", year, week)
-}
-
-func weekStartFor(day time.Time) time.Time {
-	day = dateOnly(day)
-	offset := (int(day.Weekday()) + 1) % 7
-	return day.AddDate(0, 0, -offset)
 }
 
 func isoMondayWeekStartFor(day time.Time) time.Time {
@@ -369,11 +395,18 @@ func selectedReportUsers(all []repository.User, raw []string, fallbackID int64) 
 	return selected, options, hasSelected
 }
 
-func buildReportBars(periodStart, periodEnd, today time.Time, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
-	return buildWeeklyReportBars(periodStart, periodEnd, today, sets)
+func selectedReportUsersForCurrent(current repository.User, all []repository.User, raw []string) ([]repository.User, []reportUserOption, bool) {
+	if current.Role != repository.UsersRoleAdmin {
+		return []repository.User{current}, nil, true
+	}
+	return selectedReportUsers(all, raw, current.ID)
 }
 
-func buildWeeklyReportBars(periodStart, periodEnd, today time.Time, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
+func buildReportBars(periodStart, periodEnd, today time.Time, weekStartDay time.Weekday, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
+	return buildWeeklyReportBars(periodStart, periodEnd, today, weekStartDay, sets)
+}
+
+func buildWeeklyReportBars(periodStart, periodEnd, today time.Time, weekStartDay time.Weekday, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
 	type weekBar struct {
 		start time.Time
 		end   time.Time
@@ -382,7 +415,7 @@ func buildWeeklyReportBars(periodStart, periodEnd, today time.Time, sets []repor
 
 	var weeks []weekBar
 	for weekNumber, start := 1, periodStart; !start.After(periodEnd); weekNumber++ {
-		end := saturdayWeekEndFor(start)
+		end := services.WeekEndFor(start, weekStartDay)
 		if end.After(periodEnd) {
 			end = periodEnd
 		}
@@ -503,8 +536,8 @@ func buildReportMatrix(weekStart, weekEnd, today time.Time, sets []reportOccurre
 	return days, rows, done, due
 }
 
-func selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd time.Time) (string, string) {
-	weeks, label := reportWeekRanges(monthStart, monthEnd)
+func selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd time.Time, weekStartDay time.Weekday) (string, string) {
+	weeks, label := reportWeekRanges(monthStart, monthEnd, weekStartDay)
 	for _, week := range weeks {
 		if !weekStart.After(week.end) && !weekEnd.Before(week.start) {
 			return week.label, fmt.Sprintf("%s - %s", weekStart.Format("02 Jan"), weekEnd.Format("02 Jan"))
@@ -520,11 +553,11 @@ type reportWeekRange struct {
 	subLabel string
 }
 
-func reportWeekRanges(periodStart, periodEnd time.Time) ([]reportWeekRange, string) {
+func reportWeekRanges(periodStart, periodEnd time.Time, weekStartDay time.Weekday) ([]reportWeekRange, string) {
 	weeks := make([]reportWeekRange, 0)
 	lastLabel := "Week 1"
 	for weekNumber, start := 1, periodStart; !start.After(periodEnd); weekNumber++ {
-		end := saturdayWeekEndFor(start)
+		end := services.WeekEndFor(start, weekStartDay)
 		if end.After(periodEnd) {
 			end = periodEnd
 		}
@@ -539,12 +572,6 @@ func reportWeekRanges(periodStart, periodEnd time.Time) ([]reportWeekRange, stri
 		start = end.AddDate(0, 0, 1)
 	}
 	return weeks, lastLabel
-}
-
-func saturdayWeekEndFor(day time.Time) time.Time {
-	day = dateOnly(day)
-	offset := (int(time.Friday) - int(day.Weekday()) + 7) % 7
-	return day.AddDate(0, 0, offset)
 }
 
 func reportChartRangeLabel(start, end, today time.Time) string {

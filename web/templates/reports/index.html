@@ -9,7 +9,7 @@
       <p class="text-sm opacity-70">{{.WeekLabel}} | {{.WeekRangeLabel}}</p>
       <p class="text-xs opacity-50">{{.MonthLabel}} comparison</p>
     </div>
-    <a href="/reports/export.pdf?week_start={{.WeekDateValue}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}" class="btn btn-outline btn-sm shadow-sm">
+    <a href="/reports/export.pdf?week_start={{.WeekDateValue}}{{if .CanFilterUsers}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}{{end}}" class="btn btn-outline btn-sm shadow-sm">
       <i data-lucide="file-down" class="w-4 h-4"></i>
       Export PDF
     </a>
@@ -58,18 +58,20 @@
         <form method="GET" action="/reports" class="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
           <label class="form-control">
             <span class="label-text font-medium">Week</span>
-            <input type="date" name="week_start" value="{{.WeekDateValue}}" min="2020-01-04" step="7" class="input input-bordered w-full" />
+            <input type="date" name="week_start" value="{{.WeekDateValue}}" min="{{.WeekDateMin}}" step="{{.WeekDateStep}}" class="input input-bordered w-full" />
           </label>
 
-          <label class="form-control">
-            <span class="label-text font-medium">User</span>
-            <select name="user_id" class="select select-bordered w-full">
-              <option value="" {{if not .HasSelectedUser}}selected{{end}} disabled>Select user</option>
-              {{range .UserOptions}}
-                <option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.Name}}</option>
-              {{end}}
-            </select>
-          </label>
+          {{if .CanFilterUsers}}
+            <label class="form-control">
+              <span class="label-text font-medium">User</span>
+              <select name="user_id" class="select select-bordered w-full">
+                <option value="" {{if not .HasSelectedUser}}selected{{end}} disabled>Select user</option>
+                {{range .UserOptions}}
+                  <option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.Name}}</option>
+                {{end}}
+              </select>
+            </label>
+          {{end}}
 
           <div class="flex flex-wrap items-center gap-2 pt-2">
             <button type="submit" class="btn btn-primary btn-sm w-full shadow-sm">

@@ -24,6 +24,7 @@ type Querier interface {
 	DeleteTask(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteUserSessions(ctx context.Context, userID int64) error
+	GetAppSettings(ctx context.Context) (AppSetting, error)
 	GetCompletion(ctx context.Context, arg GetCompletionParams) (TaskCompletion, error)
 	GetMensesPeriod(ctx context.Context, arg GetMensesPeriodParams) (MensesPeriod, error)
 	GetSession(ctx context.Context, id string) (Session, error)
@@ -49,6 +50,7 @@ type Querier interface {
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
+	UpsertAppSettings(ctx context.Context, arg UpsertAppSettingsParams) error
 }
 
 var _ Querier = (*Queries)(nil)

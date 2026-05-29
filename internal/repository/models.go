@@ -97,6 +97,14 @@ func (ns NullUsersRole) Value() (driver.Value, error) {
 	return string(ns.UsersRole), nil
 }
 
+type AppSetting struct {
+	ID           int8      `json:"id"`
+	WeekStartDay int8      `json:"week_start_day"`
+	HistoryWeeks int8      `json:"history_weeks"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 type MensesPeriod struct {
 	ID        int64        `json:"id"`
 	UserID    int64        `json:"user_id"`

@@ -29,16 +29,17 @@ func todayFor(now func() time.Time) time.Time {
 // rows can move between the "Today / Uncompleted" and "Today / Completed"
 // columns without a full reload.
 type DashboardHandler struct {
-	auth   *services.AuthService
-	tasks  *services.TaskService
-	tmpl   *Templates
-	errs   *ErrorPages
-	logger *slog.Logger
-	now    func() time.Time
+	auth     *services.AuthService
+	tasks    *services.TaskService
+	settings *services.AppSettingsService
+	tmpl     *Templates
+	errs     *ErrorPages
+	logger   *slog.Logger
+	now      func() time.Time
 }
 
-func NewDashboardHandler(auth *services.AuthService, tasks *services.TaskService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *DashboardHandler {
-	return &DashboardHandler{auth: auth, tasks: tasks, tmpl: tmpl, errs: errs, logger: logger, now: time.Now}
+func NewDashboardHandler(auth *services.AuthService, tasks *services.TaskService, settings *services.AppSettingsService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *DashboardHandler {
+	return &DashboardHandler{auth: auth, tasks: tasks, settings: settings, tmpl: tmpl, errs: errs, logger: logger, now: time.Now}
 }
 
 type taskRowView struct {
@@ -76,6 +77,7 @@ type dashboardInnerView struct {
 	TodayDone    []taskRowView
 	Missed       []missedGroupView
 	Stats        dashboardStatsView
+	MissedLabel  string
 }
 
 type dashboardPageView struct {
@@ -249,20 +251,29 @@ func findRowPlacement(rows []taskRowView, taskID int64, dueDate string) (taskRow
 
 func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csrfToken string) (dashboardInnerView, error) {
 	today := todayFor(h.now)
+	settings, err := h.settings.Get(r.Context())
+	if err != nil {
+		return dashboardInnerView{}, err
+	}
 
 	todayOccs, err := h.tasks.OccurrencesOnAsOf(r.Context(), user.ID, today, today)
 	if err != nil {
 		return dashboardInnerView{}, err
 	}
-	missedFrom := saturdayWeekStart(today)
+	missedDates := services.WeekDatesForHistory(h.now(), settings.WeekStartDay, settings.HistoryWeeks, false)
 	missedTo := today.AddDate(0, 0, -1)
-	missedRange, err := h.tasks.OccurrencesBetweenAsOf(r.Context(), user.ID, missedFrom, missedTo, today)
-	if err != nil {
-		return dashboardInnerView{}, err
+	var missedRange []services.TaskOccurrence
+	if len(missedDates) > 0 {
+		missedFrom := missedDates[0]
+		missedRange, err = h.tasks.OccurrencesBetweenAsOf(r.Context(), user.ID, missedFrom, missedTo, today)
+		if err != nil {
+			return dashboardInnerView{}, err
+		}
 	}
 
 	view := dashboardInnerView{
-		Today: today.Format("Mon, 02 Jan 2006"),
+		Today:       today.Format("Mon, 02 Jan 2006"),
+		MissedLabel: missedRangeLabel(settings.HistoryWeeks),
 	}
 	for _, occ := range todayOccs {
 		row := rowFromOccurrence(occ, csrfToken, "today")
@@ -292,12 +303,12 @@ func (h *DashboardHandler) buildInner(r *http.Request, user repository.User, csr
 	sortMissedGroupsByDateDesc(view.Missed)
 
 	// Compute stats
-	view.Stats = h.computeStats(r.Context(), user.ID, today, todayOccs)
+	view.Stats = h.computeStats(r.Context(), user.ID, today, todayOccs, settings.WeekStartDay)
 
 	return view, nil
 }
 
-func (h *DashboardHandler) computeStats(ctx context.Context, userID int64, today time.Time, todayOccs []services.TaskOccurrence) dashboardStatsView {
+func (h *DashboardHandler) computeStats(ctx context.Context, userID int64, today time.Time, todayOccs []services.TaskOccurrence, weekStartDay time.Weekday) dashboardStatsView {
 	stats := dashboardStatsView{}
 
 	// Today stats — exempt occurrences are excluded from numerator AND denominator.
@@ -315,8 +326,8 @@ func (h *DashboardHandler) computeStats(ctx context.Context, userID int64, today
 		stats.TodayPct = (stats.TodayDone * 100) / stats.TodayTotal
 	}
 
-	// Weekly stats (Saturday to today inclusive) — also excludes exempt.
-	weekStart := saturdayWeekStart(today)
+	// Weekly stats (configured week start to today inclusive) — also excludes exempt.
+	weekStart := services.WeekStartFor(today, weekStartDay)
 	weekOccs, err := h.tasks.OccurrencesBetweenAsOf(ctx, userID, weekStart, today, today)
 	if err == nil {
 		for _, occ := range weekOccs {
@@ -372,12 +383,6 @@ func sortMissedGroupsByDateDesc(groups []missedGroupView) {
 	})
 }
 
-func saturdayWeekStart(day time.Time) time.Time {
-	day = dateOnly(day)
-	daysSinceSaturday := (int(day.Weekday()) - int(time.Saturday) + 7) % 7
-	return day.AddDate(0, 0, -daysSinceSaturday)
-}
-
 func showInMissedSection(occ services.TaskOccurrence) bool {
 	if occ.Status == services.StatusMissed {
 		return true
@@ -389,6 +394,13 @@ func showInMissedSection(occ services.TaskOccurrence) bool {
 	completed := occ.CompletedAt.In(services.AppLocation)
 	completedDate := time.Date(completed.Year(), completed.Month(), completed.Day(), 0, 0, 0, 0, time.UTC)
 	return completedDate.After(dateOnly(occ.DueDate))
+}
+
+func missedRangeLabel(historyWeeks int) string {
+	if historyWeeks <= 1 {
+		return "this week"
+	}
+	return fmt.Sprintf("last %d weeks", historyWeeks)
 }
 
 func rowFromOccurrence(occ services.TaskOccurrence, csrfToken, section string) taskRowView {

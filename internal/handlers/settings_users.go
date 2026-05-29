@@ -17,15 +17,16 @@ import (
 // SettingsUsersHandler renders admin user CRUD pages. All routes mounted under
 // this handler must be wrapped with RequireAdmin.
 type SettingsUsersHandler struct {
-	auth   *services.AuthService
-	users  *services.UserAdminService
-	tmpl   *Templates
-	errs   *ErrorPages
-	logger *slog.Logger
+	auth     *services.AuthService
+	users    *services.UserAdminService
+	settings *services.AppSettingsService
+	tmpl     *Templates
+	errs     *ErrorPages
+	logger   *slog.Logger
 }
 
-func NewSettingsUsersHandler(auth *services.AuthService, users *services.UserAdminService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *SettingsUsersHandler {
-	return &SettingsUsersHandler{auth: auth, users: users, tmpl: tmpl, errs: errs, logger: logger}
+func NewSettingsUsersHandler(auth *services.AuthService, users *services.UserAdminService, settings *services.AppSettingsService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *SettingsUsersHandler {
+	return &SettingsUsersHandler{auth: auth, users: users, settings: settings, tmpl: tmpl, errs: errs, logger: logger}
 }
 
 // usersPageSize matches the spec's "paginated if >50" threshold.
@@ -48,16 +49,15 @@ type resetDateOption struct {
 
 type userListView struct {
 	BaseView
-	Rows        []userListRow
-	Page        int
-	TotalPages  int
-	Total       int64
-	HasPrev     bool
-	HasNext     bool
-	PrevURL     string
-	NextURL     string
-	FlashNotice string
-	ResetDates  []resetDateOption
+	Rows       []userListRow
+	Page       int
+	TotalPages int
+	Total      int64
+	HasPrev    bool
+	HasNext    bool
+	PrevURL    string
+	NextURL    string
+	ResetDates []resetDateOption
 }
 
 type userFormView struct {
@@ -93,6 +93,11 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 		h.errs.ServerError(w, r, err)
 		return
 	}
+	settings, err := h.settings.Get(r.Context())
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
 
 	rows := make([]userListRow, 0, len(users))
 	for _, u := range users {
@@ -107,7 +112,7 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	weekDates := services.WeekDatesSinceSaturday(time.Now())
+	weekDates := services.WeekDatesForHistory(time.Now(), settings.WeekStartDay, settings.HistoryWeeks, true)
 	resetDates := make([]resetDateOption, 0, len(weekDates))
 	for _, d := range weekDates {
 		resetDates = append(resetDates, resetDateOption{
@@ -133,6 +138,7 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 		NextURL:    "/settings/users?page=" + strconv.Itoa(page+1),
 		ResetDates: resetDates,
 	}
+	view.FlashNotice = popFlash(w, r)
 	if err := h.tmpl.Render(w, "settings/users/index.html", view); err != nil {
 		h.logger.Error("render users list", "err", err)
 		http.Error(w, "render error", http.StatusInternalServerError)
@@ -322,8 +328,8 @@ func (h *SettingsUsersHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 // ResetData deletes a user's task completions on a set of dates submitted as
-// repeated "dates" form fields. The service rejects dates outside the current
-// Saturday-through-today window.
+// repeated "dates" form fields. The service rejects dates outside the
+// configured reset history window.
 func (h *SettingsUsersHandler) ResetData(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -348,7 +354,13 @@ func (h *SettingsUsersHandler) ResetData(w http.ResponseWriter, r *http.Request)
 		}
 		dates = append(dates, d)
 	}
-	if err := h.users.ResetCompletions(r.Context(), id, dates); err != nil {
+	settings, err := h.settings.Get(r.Context())
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	allowedDates := services.WeekDatesForHistory(time.Now(), settings.WeekStartDay, settings.HistoryWeeks, true)
+	if err := h.users.ResetCompletions(r.Context(), id, dates, allowedDates); err != nil {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			http.Error(w, "invalid dates", http.StatusBadRequest)
@@ -362,6 +374,11 @@ func (h *SettingsUsersHandler) ResetData(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	h.logger.Info("user completions reset", "id", id, "by", current.ID, "count", len(dates))
+	if len(dates) == 0 {
+		setFlash(w, "No task completions were selected.")
+	} else {
+		setFlash(w, "Task completions reset.")
+	}
 	http.Redirect(w, r, "/settings/users", http.StatusSeeOther)
 }
 

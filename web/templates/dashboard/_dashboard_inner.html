@@ -29,7 +29,7 @@
     <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
       <i data-lucide="alert-circle" class="w-5 h-5 text-error"></i>
       Missed
-      <span class="text-sm font-normal opacity-60">— since Saturday</span>
+      <span class="text-sm font-normal opacity-60">— {{.MissedLabel}}</span>
     </h2>
     {{if .Missed}}
     <div class="flex flex-col gap-3" data-dashboard-missed-collapses>
@@ -58,7 +58,7 @@
           <i data-lucide="check-circle-2" class="w-8 h-8"></i>
         </div>
         <h3 class="font-bold text-base">No missed tasks</h3>
-        <p class="text-sm opacity-60 mt-1">Since Saturday. Keep it up!</p>
+        <p class="text-sm opacity-60 mt-1">Nothing missed in {{.MissedLabel}}.</p>
       </div>
     </div>
     {{end}}

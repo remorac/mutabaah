@@ -67,6 +67,7 @@ func main() {
 	tasks := services.NewTaskService(queries)
 	taskAdmin := services.NewTaskAdminService(queries)
 	userAdmin := services.NewUserAdminService(queries)
+	appSettings := services.NewAppSettingsService(queries)
 	mensesAdmin := services.NewMensesAdminService(queries)
 
 	tmpl, err := handlers.LoadTemplates("web/templates")
@@ -82,11 +83,12 @@ func main() {
 
 	errorPages := handlers.NewErrorPages(tmpl, logger)
 	authHandler := handlers.NewAuthHandler(auth, passwordResets, tmpl, logger, cfg.SecureCookies)
-	dashHandler := handlers.NewDashboardHandler(auth, tasks, tmpl, errorPages, logger)
-	calHandler := handlers.NewCalendarHandler(auth, tasks, tmpl, errorPages, logger)
-	reportHandler := handlers.NewReportHandler(auth, tasks, userAdmin, tmpl, errorPages, logger)
+	dashHandler := handlers.NewDashboardHandler(auth, tasks, appSettings, tmpl, errorPages, logger)
+	calHandler := handlers.NewCalendarHandler(auth, tasks, appSettings, tmpl, errorPages, logger)
+	reportHandler := handlers.NewReportHandler(auth, tasks, userAdmin, appSettings, tmpl, errorPages, logger)
+	settingsAppHandler := handlers.NewSettingsAppHandler(auth, appSettings, tmpl, errorPages, logger)
 	settingsTasksHandler := handlers.NewSettingsTasksHandler(auth, taskAdmin, tmpl, errorPages, logger)
-	settingsUsersHandler := handlers.NewSettingsUsersHandler(auth, userAdmin, tmpl, errorPages, logger)
+	settingsUsersHandler := handlers.NewSettingsUsersHandler(auth, userAdmin, appSettings, tmpl, errorPages, logger)
 	profileHandler := handlers.NewProfileHandler(auth, userAdmin, mensesAdmin, tmpl, errorPages, logger, cfg.AvatarDir)
 
 	// Wire styled 403 into RequireAdmin (middleware can't import handlers).
@@ -127,6 +129,8 @@ func main() {
 		r.Post("/tasks/{id}/complete", dashHandler.ToggleComplete)
 		r.Get("/calendar", calHandler.Month)
 		r.Get("/calendar/day", calHandler.Day)
+		r.Get("/reports", reportHandler.Show)
+		r.Get("/reports/export.pdf", reportHandler.ExportPDF)
 		r.Get("/settings/profile", profileHandler.Show)
 		r.Post("/settings/profile", profileHandler.ChangePassword)
 		r.Post("/settings/profile/picture", profileHandler.UploadPicture)
@@ -137,8 +141,8 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(apmw.RequireAuth)
 		r.Use(apmw.RequireAdmin)
-		r.Get("/reports", reportHandler.Show)
-		r.Get("/reports/export.pdf", reportHandler.ExportPDF)
+		r.Get("/settings/app", settingsAppHandler.Show)
+		r.Post("/settings/app", settingsAppHandler.Update)
 		r.Get("/settings/tasks", settingsTasksHandler.List)
 		r.Get("/settings/tasks/new", settingsTasksHandler.NewForm)
 		r.Post("/settings/tasks", settingsTasksHandler.Create)

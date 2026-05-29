@@ -3,6 +3,9 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"html/template"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,7 +44,7 @@ func TestBuildReportBars_Weeks(t *testing.T) {
 		},
 	}
 
-	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 31), sets)
+	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 31), time.Saturday, sets)
 	if done != 2 || due != 3 {
 		t.Fatalf("totals: got %d/%d, want 2/3", done, due)
 	}
@@ -68,7 +71,7 @@ func TestBuildReportBars_PercentageExcludesExempt(t *testing.T) {
 		},
 	}}
 
-	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 31), sets)
+	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 31), time.Saturday, sets)
 	if done != 1 || due != 3 {
 		t.Fatalf("totals: got %d/%d, want 1/3 with exempt excluded", done, due)
 	}
@@ -87,7 +90,7 @@ func TestBuildReportBars_PercentageExcludesFutureOccurrences(t *testing.T) {
 		},
 	}}
 
-	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 30), sets)
+	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 30), time.Saturday, sets)
 	if done != 1 || due != 1 {
 		t.Fatalf("totals: got %d/%d, want only through today 1/1", done, due)
 	}
@@ -113,8 +116,8 @@ func TestBuildReportBars_WeekLabelsRestartByMonth(t *testing.T) {
 		Occurrences: []services.TaskOccurrence{reportOcc(task, reportDate(2026, 2, 1), services.StatusCompleted)},
 	}}
 
-	janBars, _, _ := buildReportBars(reportDate(2026, 1, 1), reportDate(2026, 1, 31), reportDate(2026, 12, 31), sets)
-	febBars, _, _ := buildReportBars(reportDate(2026, 2, 1), reportDate(2026, 2, 28), reportDate(2026, 12, 31), sets)
+	janBars, _, _ := buildReportBars(reportDate(2026, 1, 1), reportDate(2026, 1, 31), reportDate(2026, 12, 31), time.Saturday, sets)
+	febBars, _, _ := buildReportBars(reportDate(2026, 2, 1), reportDate(2026, 2, 28), reportDate(2026, 12, 31), time.Saturday, sets)
 	if janBars[0].Label != "Week 1" || febBars[0].Label != "Week 1" {
 		t.Fatalf("month labels = January %q February %q, want both Week 1", janBars[0].Label, febBars[0].Label)
 	}
@@ -161,7 +164,7 @@ func TestReportChartJSONGroupsByUserOnly(t *testing.T) {
 }
 
 func TestParseReportFallbacks(t *testing.T) {
-	start, value := parseReportWeek("not-a-week", reportDate(2026, 5, 27))
+	start, value := parseReportWeek("not-a-week", reportDate(2026, 5, 27), time.Saturday)
 	if got := start.Format("2006-01-02"); got != "2026-05-23" {
 		t.Fatalf("fallback week start = %s, want 2026-05-23", got)
 	}
@@ -169,7 +172,7 @@ func TestParseReportFallbacks(t *testing.T) {
 		t.Fatalf("fallback week value = %s, want 2026-W22", value)
 	}
 
-	start, value = parseReportWeek("not-a-week", reportDate(2026, 5, 30))
+	start, value = parseReportWeek("not-a-week", reportDate(2026, 5, 30), time.Saturday)
 	if got := start.Format("2006-01-02"); got != "2026-05-30" {
 		t.Fatalf("Saturday fallback week start = %s, want 2026-05-30", got)
 	}
@@ -209,8 +212,72 @@ func TestSelectedReportUsers(t *testing.T) {
 	}
 }
 
+func TestSelectedReportUsersForCurrent_AdminHonorsFilter(t *testing.T) {
+	current := repository.User{ID: 1, Name: "Amina", Role: repository.UsersRoleAdmin}
+	users := []repository.User{
+		current,
+		{ID: 2, Name: "Bilal", Role: repository.UsersRoleUser},
+	}
+
+	selected, options, hasSelected := selectedReportUsersForCurrent(current, users, []string{"2"})
+	if !hasSelected || len(selected) != 1 || selected[0].ID != 2 {
+		t.Fatalf("selected = %+v hasSelected=%v, want admin-selected Bilal", selected, hasSelected)
+	}
+	if len(options) != 2 || options[0].Selected || !options[1].Selected {
+		t.Fatalf("options = %+v, want Bilal selected", options)
+	}
+}
+
+func TestSelectedReportUsersForCurrent_AdminFallsBackToSelf(t *testing.T) {
+	current := repository.User{ID: 1, Name: "Amina", Role: repository.UsersRoleAdmin}
+	users := []repository.User{
+		current,
+		{ID: 2, Name: "Bilal", Role: repository.UsersRoleUser},
+	}
+
+	selected, options, hasSelected := selectedReportUsersForCurrent(current, users, nil)
+	if !hasSelected || len(selected) != 1 || selected[0].ID != 1 {
+		t.Fatalf("selected = %+v hasSelected=%v, want admin fallback Amina", selected, hasSelected)
+	}
+	if len(options) != 2 || !options[0].Selected || options[1].Selected {
+		t.Fatalf("options = %+v, want Amina selected", options)
+	}
+}
+
+func TestSelectedReportUsersForCurrent_UserUsesOwnData(t *testing.T) {
+	current := repository.User{ID: 1, Name: "Amina", Role: repository.UsersRoleUser}
+	users := []repository.User{
+		current,
+		{ID: 2, Name: "Bilal", Role: repository.UsersRoleUser},
+	}
+
+	selected, options, hasSelected := selectedReportUsersForCurrent(current, users, nil)
+	if !hasSelected || len(selected) != 1 || selected[0].ID != current.ID {
+		t.Fatalf("selected = %+v hasSelected=%v, want current user only", selected, hasSelected)
+	}
+	if len(options) != 0 {
+		t.Fatalf("options = %+v, want no user filter options", options)
+	}
+}
+
+func TestSelectedReportUsersForCurrent_UserIgnoresUserID(t *testing.T) {
+	current := repository.User{ID: 1, Name: "Amina", Role: repository.UsersRoleUser}
+	users := []repository.User{
+		current,
+		{ID: 2, Name: "Bilal", Role: repository.UsersRoleUser},
+	}
+
+	selected, options, hasSelected := selectedReportUsersForCurrent(current, users, []string{"2"})
+	if !hasSelected || len(selected) != 1 || selected[0].ID != current.ID {
+		t.Fatalf("selected = %+v hasSelected=%v, want current user only", selected, hasSelected)
+	}
+	if len(options) != 0 {
+		t.Fatalf("options = %+v, want no user filter options", options)
+	}
+}
+
 func TestParseReportWeekValid(t *testing.T) {
-	start, value := parseReportWeek("2026-W01", reportDate(2026, 5, 27))
+	start, value := parseReportWeek("2026-W01", reportDate(2026, 5, 27), time.Saturday)
 	if got := start.Format("2006-01-02"); got != "2025-12-27" {
 		t.Fatalf("week start = %s, want 2025-12-27", got)
 	}
@@ -218,7 +285,7 @@ func TestParseReportWeekValid(t *testing.T) {
 		t.Fatalf("week value = %s, want 2026-W01", value)
 	}
 
-	start, value = parseReportWeek("2026-05-26", reportDate(2026, 1, 1))
+	start, value = parseReportWeek("2026-05-26", reportDate(2026, 1, 1), time.Saturday)
 	if got := start.Format("2006-01-02"); got != "2026-05-23" {
 		t.Fatalf("date-selected week start = %s, want 2026-05-23", got)
 	}
@@ -226,12 +293,168 @@ func TestParseReportWeekValid(t *testing.T) {
 		t.Fatalf("date-selected week value = %s, want 2026-W22", value)
 	}
 
-	start, value = parseReportWeek("2026-05-30", reportDate(2026, 1, 1))
+	start, value = parseReportWeek("2026-05-30", reportDate(2026, 1, 1), time.Saturday)
 	if got := start.Format("2006-01-02"); got != "2026-05-30" {
 		t.Fatalf("Saturday-selected week start = %s, want 2026-05-30", got)
 	}
 	if value != "2026-W23" {
 		t.Fatalf("Saturday-selected week value = %s, want 2026-W23", value)
+	}
+}
+
+func TestParseReportWeekUsesConfiguredStartDay(t *testing.T) {
+	start, value := parseReportWeek("2026-05-30", reportDate(2026, 1, 1), time.Monday)
+	if got := start.Format("2006-01-02"); got != "2026-05-25" {
+		t.Fatalf("monday-start selected week = %s, want 2026-05-25", got)
+	}
+	if value != "2026-W22" {
+		t.Fatalf("monday-start selected value = %s, want 2026-W22", value)
+	}
+}
+
+func TestReportDateInputMinAlignsWithWeekStart(t *testing.T) {
+	tests := []struct {
+		name  string
+		start time.Weekday
+		want  string
+	}{
+		{name: "sunday", start: time.Sunday, want: "1970-01-04"},
+		{name: "monday", start: time.Monday, want: "1970-01-05"},
+		{name: "saturday", start: time.Saturday, want: "1970-01-10"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := reportDateInputMin(tt.start); got != tt.want {
+				t.Fatalf("reportDateInputMin(%s) = %s, want %s", tt.start, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReportTemplateRendersWeekStartDateConstraints(t *testing.T) {
+	tmpl, err := LoadTemplates("../../web/templates")
+	if err != nil {
+		t.Fatalf("LoadTemplates() error = %v", err)
+	}
+	view := reportPageView{
+		BaseView: NewBaseView(repository.User{
+			ID:   1,
+			Name: "Admin",
+			Role: repository.UsersRoleAdmin,
+		}, "csrf-token", "Report — Mutaba'ah Yaumiyah"),
+		WeekDateValue: "2026-05-30",
+		WeekDateMin:   reportDateInputMin(time.Saturday),
+		WeekDateStep:  7,
+		WeekLabel:     "Week 5",
+		MonthLabel:    "May 2026",
+	}
+	rec := httptest.NewRecorder()
+
+	if err := tmpl.Render(rec, "reports/index.html", view); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		`type="date"`,
+		`name="week_start"`,
+		`value="2026-05-30"`,
+		`min="1970-01-10"`,
+		`step="7"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("rendered report missing %s: %s", want, body)
+		}
+	}
+}
+
+func TestReportTemplateRendersUserFilterForAdmin(t *testing.T) {
+	tmpl, err := LoadTemplates("../../web/templates")
+	if err != nil {
+		t.Fatalf("LoadTemplates() error = %v", err)
+	}
+	view := reportPageView{
+		BaseView: NewBaseView(repository.User{
+			ID:   1,
+			Name: "Admin",
+			Role: repository.UsersRoleAdmin,
+		}, "csrf-token", "Report — Mutaba'ah Yaumiyah"),
+		WeekDateValue:   "2026-05-30",
+		WeekDateMin:     reportDateInputMin(time.Saturday),
+		WeekDateStep:    7,
+		WeekLabel:       "Week 5",
+		MonthLabel:      "May 2026",
+		CanFilterUsers:  true,
+		HasSelectedUser: true,
+		ChartJSON:       template.JS("{}"),
+		UserOptions: []reportUserOption{
+			{ID: 1, Name: "Admin", Selected: true},
+			{ID: 2, Name: "User"},
+		},
+	}
+	rec := httptest.NewRecorder()
+
+	if err := tmpl.Render(rec, "reports/index.html", view); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		`name="user_id"`,
+		`<span class="label-text font-medium">User</span>`,
+		`/reports/export.pdf?week_start=2026-05-30&user_id=1`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("rendered admin report missing %s: %s", want, body)
+		}
+	}
+}
+
+func TestReportTemplateHidesUserFilterForRegularUser(t *testing.T) {
+	tmpl, err := LoadTemplates("../../web/templates")
+	if err != nil {
+		t.Fatalf("LoadTemplates() error = %v", err)
+	}
+	view := reportPageView{
+		BaseView: NewBaseView(repository.User{
+			ID:   1,
+			Name: "Amina",
+			Role: repository.UsersRoleUser,
+		}, "csrf-token", "Report — Mutaba'ah Yaumiyah"),
+		WeekDateValue:   "2026-05-30",
+		WeekDateMin:     reportDateInputMin(time.Saturday),
+		WeekDateStep:    7,
+		WeekLabel:       "Week 5",
+		MonthLabel:      "May 2026",
+		HasSelectedUser: true,
+		ChartJSON:       template.JS("{}"),
+	}
+	rec := httptest.NewRecorder()
+
+	if err := tmpl.Render(rec, "reports/index.html", view); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		`name="week_start"`,
+		`Export PDF`,
+		`href="/reports"`,
+		`/reports/export.pdf?week_start=2026-05-30"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("rendered user report missing %s: %s", want, body)
+		}
+	}
+	for _, unwanted := range []string{
+		`name="user_id"`,
+		`<span class="label-text font-medium">User</span>`,
+		`user_id=`,
+	} {
+		if strings.Contains(body, unwanted) {
+			t.Fatalf("rendered user report contains %s: %s", unwanted, body)
+		}
 	}
 }
 
