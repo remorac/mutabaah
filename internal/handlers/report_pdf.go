@@ -285,8 +285,8 @@ func reportPDFCellBackground(status string) (float64, float64, float64) {
 func drawReportPDFStatusIcon(p *simplePDF, status string, cx, cy float64) {
 	switch status {
 	case string(services.StatusCompleted):
-		p.colorLine(cx-3.6, cy, cx-1.0, cy-2.6, 0.12, 0.55, 0.22)
-		p.colorLine(cx-1.0, cy-2.6, cx+3.6, cy+2.8, 0.12, 0.55, 0.22)
+		p.colorLine(cx-3.8, cy-0.2, cx-1.2, cy-3.8, 0.12, 0.55, 0.22)
+		p.colorLine(cx-1.2, cy-3.8, cx+3.8, cy+3.8, 0.12, 0.55, 0.22)
 	case string(services.StatusMissed):
 		p.colorLine(cx-3.8, cy-3.8, cx+3.8, cy+3.8, 0.72, 0.12, 0.12)
 		p.colorLine(cx-3.8, cy+3.8, cx+3.8, cy-3.8, 0.72, 0.12, 0.12)
