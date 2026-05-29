@@ -110,7 +110,7 @@
         <div class="flex flex-col gap-1">
           {{range $dates}}
           <label class="label cursor-pointer justify-start gap-3">
-            <input type="checkbox" name="dates" value="{{.Value}}" class="checkbox checkbox-sm" />
+            <input type="checkbox" name="dates" value="{{.Value}}" class="checkbox checkbox-sm checkbox-error" />
             <span class="label-text">{{.Label}}</span>
           </label>
           {{end}}
