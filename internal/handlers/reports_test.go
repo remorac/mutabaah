@@ -109,6 +109,49 @@ func TestReportChartRangeLabel_EmptyForFutureOnlyBucket(t *testing.T) {
 	}
 }
 
+func TestReportPDFFilenameIncludesSanitizedUserName(t *testing.T) {
+	tests := []struct {
+		name     string
+		userName string
+		want     string
+	}{
+		{
+			name:     "simple name",
+			userName: "Amina",
+			want:     "amina-2026-W22.pdf",
+		},
+		{
+			name:     "spaced name",
+			userName: "Amina Sari",
+			want:     "amina-sari-2026-W22.pdf",
+		},
+		{
+			name:     "punctuation and whitespace",
+			userName: "  Amina   Sari!! 2026  ",
+			want:     "amina-sari-2026-2026-W22.pdf",
+		},
+		{
+			name:     "empty name",
+			userName: "",
+			want:     "user-2026-W22.pdf",
+		},
+		{
+			name:     "fully invalid name",
+			userName: "!! --",
+			want:     "user-2026-W22.pdf",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := reportPDFFilename(reportData{SelectedUserName: tt.userName, WeekValue: "2026-W22"})
+			if got != tt.want {
+				t.Fatalf("reportPDFFilename() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBuildReportBars_WeekLabelsRestartByMonth(t *testing.T) {
 	task := reportTask(1, "Dhikr")
 	sets := []reportOccurrenceSet{{

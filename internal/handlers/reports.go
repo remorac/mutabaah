@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	apmw "github.com/remorac/mutabaah/internal/middleware"
@@ -184,11 +185,40 @@ func (h *ReportHandler) ExportPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := fmt.Sprintf("mutabaah-report-%s.pdf", report.WeekValue)
+	filename := reportPDFFilename(report)
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.Header().Set("Content-Length", strconv.Itoa(len(pdf)))
 	_, _ = w.Write(pdf)
+}
+
+func reportPDFFilename(report reportData) string {
+	return fmt.Sprintf("%s-%s.pdf", reportFilenameSlug(report.SelectedUserName), report.WeekValue)
+}
+
+func reportFilenameSlug(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+
+	var b strings.Builder
+	previousDash := false
+	for _, r := range s {
+		isAlnum := (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
+		if isAlnum {
+			b.WriteRune(r)
+			previousDash = false
+			continue
+		}
+		if b.Len() > 0 && !previousDash {
+			b.WriteByte('-')
+			previousDash = true
+		}
+	}
+
+	slug := strings.Trim(b.String(), "-")
+	if slug == "" {
+		return "user"
+	}
+	return slug
 }
 
 func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
