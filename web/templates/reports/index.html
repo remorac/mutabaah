@@ -6,44 +6,45 @@
         <i data-lucide="bar-chart-3" class="w-5 h-5 text-primary"></i>
         Report
       </h2>
-      <p class="text-sm opacity-70">{{.MonthLabel}}</p>
+      <p class="text-sm opacity-70">{{.WeekLabel}} | {{.WeekRangeLabel}}</p>
+      <p class="text-xs opacity-50">{{.MonthLabel}} comparison</p>
     </div>
-    <a href="/reports/export.pdf?month={{.MonthValue}}{{if .GroupByTasks}}&group_by_tasks=1{{end}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}" class="btn btn-outline btn-sm shadow-sm">
+    <a href="/reports/export.pdf?week_start={{.WeekDateValue}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}" class="btn btn-outline btn-sm shadow-sm">
       <i data-lucide="file-down" class="w-4 h-4"></i>
       Export PDF
     </a>
   </div>
 
   <!-- Metric cards -->
-  <div class="grid grid-cols-3 gap-3">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
     <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-4 flex flex-row items-center gap-4">
+      <div class="card-body p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4">
         <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
           <i data-lucide="percent" class="w-5 h-5"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <div class="text-2xl font-bold leading-none">{{.TotalPct}}%</div>
           <div class="text-xs opacity-60 mt-1">completion</div>
         </div>
       </div>
     </div>
     <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-4 flex flex-row items-center gap-4">
+      <div class="card-body p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4">
         <div class="w-10 h-10 rounded-xl bg-success/10 text-success grid place-items-center shrink-0">
           <i data-lucide="check-circle-2" class="w-5 h-5"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <div class="text-2xl font-bold leading-none">{{.TotalDone}}</div>
           <div class="text-xs opacity-60 mt-1">done</div>
         </div>
       </div>
     </div>
     <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-4 flex flex-row items-center gap-4">
+      <div class="card-body p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4">
         <div class="w-10 h-10 rounded-xl bg-warning/10 text-warning grid place-items-center shrink-0">
           <i data-lucide="list-todo" class="w-5 h-5"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <div class="text-2xl font-bold leading-none">{{.TotalDue}}</div>
           <div class="text-xs opacity-60 mt-1">due</div>
         </div>
@@ -56,8 +57,8 @@
       <div class="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <form method="GET" action="/reports" class="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
           <label class="form-control">
-            <span class="label-text font-medium">Month</span>
-            <input type="month" name="month" value="{{.MonthValue}}" class="input input-bordered w-full" />
+            <span class="label-text font-medium">Week</span>
+            <input type="date" name="week_start" value="{{.WeekDateValue}}" min="2020-01-04" step="7" class="input input-bordered w-full" />
           </label>
 
           <label class="form-control">
@@ -70,19 +71,11 @@
             </select>
           </label>
 
-          <label class="label cursor-pointer gap-3 px-0 py-2">
-            <input type="checkbox" name="group_by_tasks" value="1" class="checkbox checkbox-primary checkbox-sm" {{if .GroupByTasks}}checked{{end}} />
-            <span class="label-text">Group by tasks</span>
-          </label>
-
           <div class="flex flex-wrap items-center gap-2 pt-2">
-            <button type="submit" class="btn btn-primary btn-sm flex-1 shadow-sm">
+            <button type="submit" class="btn btn-primary btn-sm w-full shadow-sm">
               <i data-lucide="filter" class="w-4 h-4"></i>
               Apply
             </button>
-            <a href="/reports" class="btn btn-ghost btn-sm">
-              Reset
-            </a>
           </div>
         </form>
 
@@ -95,11 +88,67 @@
               <p class="text-sm font-medium opacity-70">Select a user to display the report.</p>
             </div>
           {{else if .Bars}}
-            <div class="grid min-h-96 gap-4 md:grid-cols-[minmax(0,1fr)_12rem]">
+            <div class="min-h-96">
               <div class="min-w-0">
                 <canvas id="report-completion-chart" class="h-96 w-full" aria-label="Report completion chart" role="img"></canvas>
               </div>
-              <div id="report-chart-legend" class="flex flex-col gap-2 text-sm md:pt-6"></div>
+            </div>
+            <div class="overflow-x-auto border border-base-200 rounded-lg">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    {{range .WeekDays}}
+                      <th class="text-center whitespace-nowrap">
+                        <div class="text-xs font-medium opacity-60">{{.Label}}</div>
+                        <div>{{.ShortDate}}</div>
+                      </th>
+                    {{end}}
+                  </tr>
+                </thead>
+                <tbody>
+                  {{range .TaskRows}}
+                  <tr>
+                    <td class="min-w-48">
+                      <div class="font-medium">{{.TaskName}}</div>
+                      <div class="mt-1 flex flex-wrap items-center gap-1 text-xs opacity-60">
+                        {{if ne .Frequency "daily"}}
+                        <span class="badge badge-outline badge-xs font-normal">{{.Frequency}}</span>
+                        {{end}}
+                        {{if .Description}}<span>{{.Description}}</span>{{end}}
+                      </div>
+                    </td>
+                    {{range .Cells}}
+                      <td class="text-center">
+                        {{if .Scheduled}}
+                          {{if eq .Status "completed"}}
+                            <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-green-100 text-green-700" title="{{.StatusLabel}}{{if .CompletedAt}} at {{.CompletedAt}}{{end}}">
+                              <i data-lucide="circle-check" class="h-4 w-4"></i>
+                            </span>
+                          {{else if eq .Status "missed"}}
+                            <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-red-100 text-red-700" title="{{.StatusLabel}}">
+                              <i data-lucide="circle-x" class="h-4 w-4"></i>
+                            </span>
+                          {{else if eq .Status "exempt"}}
+                            <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-pink-100 text-pink-700" title="{{.StatusLabel}}">
+                              <i data-lucide="moon" class="h-4 w-4"></i>
+                            </span>
+                          {{else}}
+                            <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-base-200 text-base-content/55" title="{{.StatusLabel}}">
+                              <i data-lucide="clock-3" class="h-4 w-4"></i>
+                            </span>
+                          {{end}}
+                        {{end}}
+                      </td>
+                    {{end}}
+                  </tr>
+                  {{else}}
+                  <tr>
+                    <td colspan="8" class="text-center opacity-60 py-6">No task occurrences found for this week.</td>
+                  </tr>
+                  {{end}}
+                </tbody>
+              </table>
             </div>
           {{else}}
             <div class="flex flex-col items-center text-center py-10">
@@ -126,47 +175,15 @@
     const labels = chartData.labels || [];
     const colors = ["#4f79a7", "#65a30d", "#c084fc", "#f59e0b", "#0891b2", "#db2777", "#64748b"];
     const users = chartData.users || [];
-    const datasets = users.flatMap((user, index) => {
+    const datasets = users.map((user, index) => {
       const color = colors[index % colors.length];
-      return [
-        {
-          label: `${user.name} completed`,
-          data: user.completed || [],
-          backgroundColor: color,
-          borderRadius: 5,
-          stack: user.name
-        },
-        {
-          label: `${user.name} missed`,
-          data: user.missed || [],
-          backgroundColor: "#d1d5db",
-          borderRadius: 5,
-          stack: user.name
-        }
-      ];
+      return {
+        label: user.name,
+        data: user.data || user.percentage || [],
+        backgroundColor: color,
+        borderRadius: 5
+      };
     });
-    const legend = document.getElementById("report-chart-legend");
-    if (legend) {
-      legend.innerHTML = "";
-      users.forEach((user, index) => {
-        const color = colors[index % colors.length];
-        const item = document.createElement("div");
-        item.className = "flex items-center gap-2";
-        item.innerHTML = `
-          <span class="h-3 w-3 rounded-full" style="background:${color}"></span>
-          <span class="min-w-0 truncate">${user.name}</span>
-        `;
-        legend.appendChild(item);
-      });
-
-      const missedItem = document.createElement("div");
-      missedItem.className = "flex items-center gap-2";
-      missedItem.innerHTML = `
-        <span class="h-3 w-3 rounded-full bg-[#d1d5db]"></span>
-        <span>missed</span>
-      `;
-      legend.appendChild(missedItem);
-    }
 
     new Chart(canvas, {
       type: "bar",
@@ -189,12 +206,12 @@
             callbacks: {
               afterBody(items) {
                 const item = items[0];
-                const user = users.find((entry) => entry.name === item.dataset.stack);
+                const user = users.find((entry) => entry.name === item.dataset.label);
                 if (!user) return "";
                 const completed = user.completed[item.dataIndex] || 0;
                 const total = user.total[item.dataIndex] || 0;
                 const percent = user.percentage[item.dataIndex] || 0;
-                return `${item.dataset.stack}: ${percent}% complete (${completed}/${total})`;
+                return `${item.dataset.label}: ${percent}% complete (${completed}/${total})`;
               },
               footer(items) {
                 const index = items[0].dataIndex;
@@ -205,7 +222,6 @@
         },
         scales: {
           x: {
-            stacked: true,
             grid: {
               display: false
             },
@@ -215,14 +231,17 @@
             }
           },
           y: {
-            stacked: true,
             beginAtZero: true,
+            max: 100,
             title: {
               display: true,
-              text: "Tasks"
+              text: "Completion"
             },
             ticks: {
-              precision: 0
+              precision: 0,
+              callback(value) {
+                return `${value}%`;
+              }
             }
           }
         }

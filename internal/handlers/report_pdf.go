@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/remorac/mutabaah/internal/services"
 )
 
 const (
@@ -80,6 +82,24 @@ func (p *simplePDF) line(x1, y1, x2, y2 float64) {
 	_, _ = fmt.Fprintf(&p.buf, "0.55 0.60 0.68 RG %.2f %.2f m %.2f %.2f l S\n", x1, y1, x2, y2)
 }
 
+func (p *simplePDF) colorLine(x1, y1, x2, y2 float64, r, g, b float64) {
+	_, _ = fmt.Fprintf(&p.buf, "%.3f %.3f %.3f RG %.2f %.2f m %.2f %.2f l S\n", r, g, b, x1, y1, x2, y2)
+}
+
+func (p *simplePDF) circle(x, y, radius float64, r, g, b float64) {
+	k := radius * 0.5522847498
+	_, _ = fmt.Fprintf(
+		&p.buf,
+		"%.3f %.3f %.3f RG %.2f %.2f m %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c S\n",
+		r, g, b,
+		x+radius, y,
+		x+radius, y+k, x+k, y+radius, x, y+radius,
+		x-k, y+radius, x-radius, y+k, x-radius, y,
+		x-radius, y-k, x-k, y-radius, x, y-radius,
+		x+k, y-radius, x+radius, y-k, x+radius, y,
+	)
+}
+
 func (p *simplePDF) rect(x, y, w, h float64, r, g, b float64) {
 	if h < 0 {
 		y += h
@@ -96,43 +116,67 @@ func buildReportPDF(report reportData) ([]byte, error) {
 	p := newSimplePDF()
 	y := pdfPageHeight - pdfMargin
 
-	p.text(pdfMargin, y, 18, "Mutaba'ah Report")
-	y -= 22
-	p.text(pdfMargin, y, 11, fmt.Sprintf("%s | Grouped by weeks", report.MonthLabel))
-	y -= 25
-	if report.SelectedUserName != "" {
-		p.text(pdfMargin, y, 11, fmt.Sprintf("User: %s", report.SelectedUserName))
-		y -= 22
-	}
-	p.text(pdfMargin, y, 11, fmt.Sprintf("Group by tasks: %s", reportGroupByTasksLabel(report.GroupByTasks)))
-	y -= 22
-
-	summary := fmt.Sprintf("Completion %d%%    Done %d    Due %d", report.TotalPct, report.TotalDone, report.TotalDue)
-	p.text(pdfMargin, y, 12, summary)
-	y -= 35
+	y = drawReportPDFHeader(p, report, y)
+	y -= 6
 
 	if len(report.Bars) > 0 {
 		y = drawReportPDFChart(p, report.Bars, y)
-		y -= 26
+		y -= 8
 	} else {
 		p.text(pdfMargin, y, 11, "No task occurrences found for this report.")
 		y -= 26
 	}
 
-	p.text(pdfMargin, y, 14, "Tabulation")
-	y -= 20
-	drawReportPDFTable(p, report.Bars, y)
+	if y < pdfMargin+80 {
+		p.newPage()
+		y = pdfPageHeight - pdfMargin
+	}
+	p.text(pdfMargin, y, 14, report.WeekLabel)
+	y -= 34
+	drawReportPDFMatrixTable(p, report.WeekLabel, report.WeekDays, report.TaskRows, y)
 
 	return p.finish(), nil
+}
+
+func drawReportPDFHeader(p *simplePDF, report reportData, y float64) float64 {
+	left := pdfMargin
+	width := pdfPageWidth - pdfMargin*2
+	top := y + 8
+	height := 102.0
+	bottom := top - height
+
+	p.rect(left, bottom, width, height, 0.95, 0.98, 1.00)
+	p.rect(left, top-18, width, 18, 0.31, 0.48, 0.65)
+	p.text(left+16, top-13, 10, "MUTABA'AH REPORT")
+	headerName := report.SelectedUserName
+	if headerName == "" {
+		headerName = "Report"
+	}
+	p.text(left+16, top-42, 20, headerName)
+	p.text(left+16, top-60, 11, fmt.Sprintf("%s | %s", report.WeekRangeLabel, report.MonthLabel))
+
+	chipY := bottom + 16
+	chipWidth := 86.0
+	chipGap := 10.0
+	drawReportPDFChip(p, left+width-chipWidth*3-chipGap*2-16, chipY, chipWidth, "Completion", fmt.Sprintf("%d%%", report.TotalPct), 0.90, 0.95, 1.00)
+	drawReportPDFChip(p, left+width-chipWidth*2-chipGap-16, chipY, chipWidth, "Done", fmt.Sprintf("%d", report.TotalDone), 0.88, 0.96, 0.88)
+	drawReportPDFChip(p, left+width-chipWidth-16, chipY, chipWidth, "Due", fmt.Sprintf("%d", report.TotalDue), 1.00, 0.95, 0.82)
+
+	return bottom - 10
+}
+
+func drawReportPDFChip(p *simplePDF, x, y, width float64, label, value string, r, g, b float64) {
+	p.rect(x, y, width, 32, r, g, b)
+	p.text(x+8, y+19, 8, label)
+	p.text(x+8, y+7, 13, value)
 }
 
 type reportPDFChartBar struct {
 	Label     string
 	SubLabel  string
-	TaskName  string
 	Completed int
-	Missed    int
 	Total     int
+	Percent   int
 }
 
 func drawReportPDFChart(p *simplePDF, bars []reportBarView, y float64) float64 {
@@ -141,18 +185,15 @@ func drawReportPDFChart(p *simplePDF, bars []reportBarView, y float64) float64 {
 	maxBars := min(len(chartBars), 24)
 	chartBars = chartBars[:maxBars]
 
-	left := pdfMargin
-	bottom := y - 170
-	width := pdfPageWidth - pdfMargin*2
+	axisLabelWidth := 26.0
+	left := pdfMargin + axisLabelWidth
+	bottom := y - 155
+	width := pdfPageWidth - pdfMargin*2 - axisLabelWidth
 	height := 150.0
 	p.strokeRect(left, bottom, width, height)
-	p.text(left, y+10, 14, "Chart")
-
-	maxTotal := 1
-	for _, bar := range chartBars {
-		if bar.Total > maxTotal {
-			maxTotal = bar.Total
-		}
+	for tick := 0; tick <= 100; tick += 10 {
+		tickY := bottom + height*float64(tick)/100.0
+		p.text(pdfMargin, tickY-3, 7, fmt.Sprintf("%d", tick))
 	}
 
 	gap := 4.0
@@ -162,49 +203,47 @@ func drawReportPDFChart(p *simplePDF, bars []reportBarView, y float64) float64 {
 	}
 	for i, bar := range chartBars {
 		x := left + gap + float64(i)*(barWidth+gap)
-		completedHeight := height * float64(bar.Completed) / float64(maxTotal)
-		missedHeight := height * float64(bar.Missed) / float64(maxTotal)
-		p.rect(x, bottom, barWidth, completedHeight, 0.31, 0.48, 0.65)
-		p.rect(x, bottom+completedHeight, barWidth, missedHeight, 0.82, 0.84, 0.86)
+		barHeight := height * float64(bar.Percent) / 100.0
+		p.rect(x, bottom, barWidth, barHeight, 0.31, 0.48, 0.65)
 		if maxBars <= 14 || i%2 == 0 {
-			label := bar.Label
-			if bar.TaskName != "" {
-				label = label + "/" + bar.TaskName
-			}
-			p.text(x, bottom-13, 7, truncatePDFText(label, 12))
+			label := truncatePDFText(fmt.Sprintf("%s (%d%%)", bar.Label, bar.Percent), 16)
+			labelWidth := float64(len(label)) * 3.5
+			p.text(x+barWidth/2-labelWidth/2, bottom-13, 7, label)
 		}
 	}
 
-	p.rect(left, bottom-38, 8, 8, 0.31, 0.48, 0.65)
-	p.text(left+13, bottom-37, 9, "completed")
-	p.rect(left+82, bottom-38, 8, 8, 0.82, 0.84, 0.86)
-	p.text(left+95, bottom-37, 9, "missed")
 	if totalBars > maxBars {
-		p.text(left+160, bottom-37, 9, fmt.Sprintf("showing first %d of %d groups", maxBars, totalBars))
+		p.text(left, bottom-37, 9, fmt.Sprintf("showing first %d of %d groups", maxBars, totalBars))
 	}
 
-	return bottom - 48
+	return bottom - 28
 }
 
-func drawReportPDFTable(p *simplePDF, bars []reportBarView, y float64) {
-	rowHeight := 18.0
-	colX := []float64{pdfMargin, 104, 192, 282, 372, 418, 470, 522}
-	headers := []string{"Label", "Detail", "Task", "User", "Done", "Missed", "Due", "%"}
+func drawReportPDFMatrixTable(p *simplePDF, heading string, days []reportWeekDayView, rows []reportTaskRowView, y float64) {
+	rowHeight := 30.0
+	taskWidth := 158.0
+	dayWidth := (pdfPageWidth - pdfMargin*2 - taskWidth) / 7.0
 
 	drawHeader := func() {
 		p.rect(pdfMargin, y-4, pdfPageWidth-pdfMargin*2, rowHeight, 0.78, 0.86, 0.96)
-		for i, header := range headers {
-			p.text(colX[i], y+2, 9, header)
+		p.text(pdfMargin+4, y+8, 9, "Task")
+		for i, day := range days {
+			x := pdfMargin + taskWidth + float64(i)*dayWidth
+			p.text(x+3, y+8, 8, day.ShortDate)
 		}
 		y -= rowHeight
 	}
 
 	drawHeader()
-	for rowIndex, bar := range bars {
+	if len(rows) == 0 {
+		p.text(pdfMargin, y+2, 9, "No task occurrences found for this week.")
+		return
+	}
+	for rowIndex, row := range rows {
 		if y < pdfMargin+rowHeight {
 			p.newPage()
 			y = pdfPageHeight - pdfMargin
-			p.text(pdfMargin, y, 14, "Tabulation")
+			p.text(pdfMargin, y, 14, heading)
 			y -= 22
 			drawHeader()
 		}
@@ -212,22 +251,50 @@ func drawReportPDFTable(p *simplePDF, bars []reportBarView, y float64) {
 		if rowIndex%2 == 0 {
 			p.rect(pdfMargin, y-4, pdfPageWidth-pdfMargin*2, rowHeight, 0.96, 0.98, 1.00)
 		}
-		missed := bar.Total - bar.Completed
-		values := []string{
-			truncatePDFText(bar.Label, 11),
-			truncatePDFText(bar.SubLabel, 13),
-			truncatePDFText(bar.TaskName, 13),
-			truncatePDFText(bar.UserName, 13),
-			fmt.Sprintf("%d", bar.Completed),
-			fmt.Sprintf("%d", missed),
-			fmt.Sprintf("%d", bar.Total),
-			fmt.Sprintf("%d%%", bar.Percent),
+		p.text(pdfMargin+4, y+14, 9, truncatePDFText(row.TaskName, 24))
+		if row.Description != "" {
+			p.text(pdfMargin+4, y+3, 7, truncatePDFText(row.Description, 30))
 		}
-		for i, value := range values {
-			p.text(colX[i], y+2, 9, value)
+		for i, cell := range row.Cells {
+			if !cell.Scheduled {
+				continue
+			}
+			x := pdfMargin + taskWidth + float64(i)*dayWidth
+			r, g, b := reportPDFCellBackground(cell.Status)
+			p.rect(x+3, y+3, dayWidth-6, rowHeight-12, r, g, b)
+			drawReportPDFStatusIcon(p, cell.Status, x+dayWidth/2, y+12)
 		}
 		p.line(pdfMargin, y-4, pdfPageWidth-pdfMargin, y-4)
 		y -= rowHeight
+	}
+}
+
+func reportPDFCellBackground(status string) (float64, float64, float64) {
+	switch status {
+	case string(services.StatusCompleted):
+		return 0.82, 0.94, 0.84
+	case string(services.StatusMissed):
+		return 0.98, 0.82, 0.82
+	case string(services.StatusExempt):
+		return 0.98, 0.86, 0.94
+	default:
+		return 0.90, 0.92, 0.95
+	}
+}
+
+func drawReportPDFStatusIcon(p *simplePDF, status string, cx, cy float64) {
+	switch status {
+	case string(services.StatusCompleted):
+		p.colorLine(cx-5, cy, cx-1.5, cy-3.5, 0.12, 0.55, 0.22)
+		p.colorLine(cx-1.5, cy-3.5, cx+5, cy+4, 0.12, 0.55, 0.22)
+	case string(services.StatusMissed):
+		p.colorLine(cx-5, cy-5, cx+5, cy+5, 0.72, 0.12, 0.12)
+		p.colorLine(cx-5, cy+5, cx+5, cy-5, 0.72, 0.12, 0.12)
+	case string(services.StatusExempt):
+		p.circle(cx-1.5, cy, 5.2, 0.70, 0.18, 0.45)
+		p.circle(cx+1.8, cy+1.0, 5.0, 0.98, 0.86, 0.94)
+	default:
+		p.circle(cx, cy, 5.0, 0.39, 0.45, 0.55)
 	}
 }
 
@@ -235,25 +302,18 @@ func aggregateReportPDFBars(bars []reportBarView) []reportPDFChartBar {
 	indexes := map[string]int{}
 	out := make([]reportPDFChartBar, 0)
 	for _, bar := range bars {
-		key := bar.Label + "\x00" + bar.SubLabel + "\x00" + bar.TaskName
+		key := bar.Label + "\x00" + bar.SubLabel
 		idx, ok := indexes[key]
 		if !ok {
 			idx = len(out)
 			indexes[key] = idx
-			out = append(out, reportPDFChartBar{Label: bar.Label, SubLabel: bar.SubLabel, TaskName: bar.TaskName})
+			out = append(out, reportPDFChartBar{Label: bar.Label, SubLabel: bar.SubLabel})
 		}
 		out[idx].Completed += bar.Completed
-		out[idx].Missed += bar.Total - bar.Completed
 		out[idx].Total += bar.Total
+		out[idx].Percent = percent(out[idx].Completed, out[idx].Total)
 	}
 	return out
-}
-
-func reportGroupByTasksLabel(groupByTasks bool) string {
-	if groupByTasks {
-		return "yes"
-	}
-	return "no"
 }
 
 func truncatePDFText(s string, limit int) string {

@@ -39,20 +39,48 @@ type reportBarView struct {
 	Label     string
 	SubLabel  string
 	UserName  string
-	TaskName  string
 	Completed int
 	Total     int
 	Percent   int
 }
 
+type reportWeekDayView struct {
+	Date      string
+	Label     string
+	ShortDate string
+	sortDate  string
+}
+
+type reportMatrixCellView struct {
+	Scheduled   bool
+	Status      string
+	StatusLabel string
+	CompletedAt string
+}
+
+type reportTaskRowView struct {
+	TaskID       int64
+	TaskName     string
+	Description  string
+	Frequency    string
+	UserName     string
+	Cells        []reportMatrixCellView
+	sortSequence int32
+	sortTitle    string
+}
+
 type reportPageView struct {
 	BaseView
-	MonthValue      string
+	WeekValue       string
+	WeekDateValue   string
+	WeekLabel       string
+	WeekRangeLabel  string
 	MonthLabel      string
-	GroupByTasks    bool
 	HasSelectedUser bool
 	UserOptions     []reportUserOption
 	Bars            []reportBarView
+	WeekDays        []reportWeekDayView
+	TaskRows        []reportTaskRowView
 	ChartJSON       template.JS
 	TotalDone       int
 	TotalDue        int
@@ -67,6 +95,7 @@ type reportChartData struct {
 
 type reportChartUserSeries struct {
 	Name       string `json:"name"`
+	Data       []int  `json:"data"`
 	Completed  []int  `json:"completed"`
 	Missed     []int  `json:"missed"`
 	Total      []int  `json:"total"`
@@ -79,14 +108,19 @@ type reportOccurrenceSet struct {
 }
 
 type reportData struct {
-	MonthStart       time.Time
-	MonthValue       string
+	WeekStart        time.Time
+	WeekEnd          time.Time
+	WeekValue        string
+	WeekDateValue    string
+	WeekLabel        string
+	WeekRangeLabel   string
 	MonthLabel       string
-	GroupByTasks     bool
 	HasSelectedUser  bool
 	SelectedUserName string
 	UserOptions      []reportUserOption
 	Bars             []reportBarView
+	WeekDays         []reportWeekDayView
+	TaskRows         []reportTaskRowView
 	TotalDone        int
 	TotalDue         int
 	TotalPct         int
@@ -105,13 +139,17 @@ func (h *ReportHandler) Show(w http.ResponseWriter, r *http.Request) {
 	}
 	view := reportPageView{
 		BaseView:        NewBaseView(current, token, "Report — Mutaba'ah Yaumiyah"),
-		MonthValue:      report.MonthValue,
+		WeekValue:       report.WeekValue,
+		WeekDateValue:   report.WeekDateValue,
+		WeekLabel:       report.WeekLabel,
+		WeekRangeLabel:  report.WeekRangeLabel,
 		MonthLabel:      report.MonthLabel,
-		GroupByTasks:    report.GroupByTasks,
 		HasSelectedUser: report.HasSelectedUser,
 		UserOptions:     report.UserOptions,
 		Bars:            report.Bars,
-		ChartJSON:       reportChartJSON(report.Bars, report.GroupByTasks),
+		WeekDays:        report.WeekDays,
+		TaskRows:        report.TaskRows,
+		ChartJSON:       reportChartJSON(report.Bars),
 		TotalDone:       report.TotalDone,
 		TotalDue:        report.TotalDue,
 		TotalPct:        report.TotalPct,
@@ -136,7 +174,7 @@ func (h *ReportHandler) ExportPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := fmt.Sprintf("mutabaah-report-%s.pdf", report.MonthValue)
+	filename := fmt.Sprintf("mutabaah-report-%s.pdf", report.WeekValue)
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.Header().Set("Content-Length", strconv.Itoa(len(pdf)))
@@ -145,9 +183,17 @@ func (h *ReportHandler) ExportPDF(w http.ResponseWriter, r *http.Request) {
 
 func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 	today := todayFor(h.now)
-	monthStart, monthValue := parseReportMonth(r.URL.Query().Get("month"), today)
+	weekStart, weekValue := parseReportWeek(r.URL.Query().Get("week_start"), today)
+	if r.URL.Query().Get("week_start") == "" {
+		weekStart, weekValue = parseReportWeek(r.URL.Query().Get("week"), today)
+	}
+	weekEnd := weekStart.AddDate(0, 0, 6)
+	monthStart := time.Date(weekStart.Year(), weekStart.Month(), 1, 0, 0, 0, 0, time.UTC)
 	monthEnd := monthStart.AddDate(0, 1, -1)
-	groupByTasks := parseReportGroupByTasks(r)
+	queryEnd := monthEnd
+	if weekEnd.After(queryEnd) {
+		queryEnd = weekEnd
+	}
 
 	allUsers, _, err := h.users.List(r.Context(), 0, 0)
 	if err != nil {
@@ -162,30 +208,37 @@ func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 
 	sets := make([]reportOccurrenceSet, 0, len(selectedUsers))
 	for _, u := range selectedUsers {
-		occs, err := h.tasks.OccurrencesBetweenAsOf(r.Context(), u.ID, monthStart, monthEnd, today)
+		occs, err := h.tasks.OccurrencesBetweenAsOf(r.Context(), u.ID, monthStart, queryEnd, today)
 		if err != nil {
 			return reportData{}, err
 		}
 		sets = append(sets, reportOccurrenceSet{User: u, Occurrences: occs})
 	}
 
-	bars, done, due := buildReportBars(groupByTasks, monthStart, monthEnd, sets)
+	bars, _, _ := buildReportBars(monthStart, monthEnd, today, sets)
+	weekDays, taskRows, done, due := buildReportMatrix(weekStart, weekEnd, today, sets)
+	weekLabel, weekRangeLabel := selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd)
 	return reportData{
-		MonthStart:       monthStart,
-		MonthValue:       monthValue,
+		WeekStart:        weekStart,
+		WeekEnd:          weekEnd,
+		WeekValue:        weekValue,
+		WeekDateValue:    weekStart.Format("2006-01-02"),
+		WeekLabel:        weekLabel,
+		WeekRangeLabel:   weekRangeLabel,
 		MonthLabel:       monthStart.Format("January 2006"),
-		GroupByTasks:     groupByTasks,
 		HasSelectedUser:  hasSelectedUser,
 		SelectedUserName: selectedUserName,
 		UserOptions:      options,
 		Bars:             bars,
+		WeekDays:         weekDays,
+		TaskRows:         taskRows,
 		TotalDone:        done,
 		TotalDue:         due,
 		TotalPct:         percent(done, due),
 	}, nil
 }
 
-func reportChartJSON(bars []reportBarView, groupByTasks bool) template.JS {
+func reportChartJSON(bars []reportBarView) template.JS {
 	data := reportChartData{
 		Labels:    make([]string, 0, len(bars)),
 		SubLabels: make([]string, 0, len(bars)),
@@ -207,19 +260,18 @@ func reportChartJSON(bars []reportBarView, groupByTasks bool) template.JS {
 				data.Users[i].Missed = append(data.Users[i].Missed, 0)
 				data.Users[i].Total = append(data.Users[i].Total, 0)
 				data.Users[i].Percentage = append(data.Users[i].Percentage, 0)
+				data.Users[i].Data = append(data.Users[i].Data, 0)
 			}
 		}
 
 		seriesName := bar.UserName
-		if groupByTasks && bar.TaskName != "" {
-			seriesName = bar.TaskName
-		}
 		userIndex, ok := userIndexes[seriesName]
 		if !ok {
 			userIndex = len(data.Users)
 			userIndexes[seriesName] = userIndex
 			data.Users = append(data.Users, reportChartUserSeries{
 				Name:       seriesName,
+				Data:       make([]int, len(data.Labels)),
 				Completed:  make([]int, len(data.Labels)),
 				Missed:     make([]int, len(data.Labels)),
 				Total:      make([]int, len(data.Labels)),
@@ -231,6 +283,7 @@ func reportChartJSON(bars []reportBarView, groupByTasks bool) template.JS {
 		data.Users[userIndex].Missed[labelIndex] += bar.Total - bar.Completed
 		data.Users[userIndex].Total[labelIndex] += bar.Total
 		data.Users[userIndex].Percentage[labelIndex] = percent(data.Users[userIndex].Completed[labelIndex], data.Users[userIndex].Total[labelIndex])
+		data.Users[userIndex].Data[labelIndex] = data.Users[userIndex].Percentage[labelIndex]
 	}
 	b, err := json.Marshal(data)
 	if err != nil {
@@ -239,19 +292,54 @@ func reportChartJSON(bars []reportBarView, groupByTasks bool) template.JS {
 	return template.JS(b)
 }
 
-func parseReportGroupByTasks(r *http.Request) bool {
-	q := r.URL.Query()
-	return q.Get("group_by_tasks") != "" || q.Get("subgroup") == "tasks"
-}
-
-func parseReportMonth(s string, fallback time.Time) (time.Time, string) {
-	if t, err := time.ParseInLocation("2006-01", s, time.UTC); err == nil {
-		start := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
-		return start, start.Format("2006-01")
+func parseReportWeek(s string, fallback time.Time) (time.Time, string) {
+	if selected, err := time.ParseInLocation("2006-01-02", s, time.UTC); err == nil {
+		start := weekStartFor(selected)
+		return start, reportWeekValue(start)
+	}
+	if len(s) == len("2006-W02") && s[4] == '-' && s[5] == 'W' {
+		year, yearErr := strconv.Atoi(s[:4])
+		week, weekErr := strconv.Atoi(s[6:])
+		if yearErr == nil && weekErr == nil {
+			if isoStart, ok := isoWeekStart(year, week); ok {
+				start := weekStartFor(isoStart)
+				return start, reportWeekValue(start)
+			}
+		}
 	}
 	fallback = fallback.In(services.AppLocation)
-	start := time.Date(fallback.Year(), fallback.Month(), 1, 0, 0, 0, 0, time.UTC)
-	return start, start.Format("2006-01")
+	start := weekStartFor(dateOnly(fallback))
+	return start, reportWeekValue(start)
+}
+
+func isoWeekStart(year, week int) (time.Time, bool) {
+	if week < 1 || week > 53 {
+		return time.Time{}, false
+	}
+	jan4 := time.Date(year, 1, 4, 0, 0, 0, 0, time.UTC)
+	start := isoMondayWeekStartFor(jan4).AddDate(0, 0, (week-1)*7)
+	gotYear, gotWeek := start.ISOWeek()
+	if gotYear != year || gotWeek != week {
+		return time.Time{}, false
+	}
+	return start, true
+}
+
+func reportWeekValue(start time.Time) string {
+	year, week := start.AddDate(0, 0, 2).ISOWeek()
+	return fmt.Sprintf("%04d-W%02d", year, week)
+}
+
+func weekStartFor(day time.Time) time.Time {
+	day = dateOnly(day)
+	offset := (int(day.Weekday()) + 1) % 7
+	return day.AddDate(0, 0, -offset)
+}
+
+func isoMondayWeekStartFor(day time.Time) time.Time {
+	day = dateOnly(day)
+	offset := (int(day.Weekday()) + 6) % 7
+	return day.AddDate(0, 0, -offset)
 }
 
 func selectedReportUsers(all []repository.User, raw []string, fallbackID int64) ([]repository.User, []reportUserOption, bool) {
@@ -281,14 +369,11 @@ func selectedReportUsers(all []repository.User, raw []string, fallbackID int64) 
 	return selected, options, hasSelected
 }
 
-func buildReportBars(groupByTasks bool, periodStart, periodEnd time.Time, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
-	if groupByTasks {
-		return buildWeeklyTaskReportBars(periodStart, periodEnd, sets)
-	}
-	return buildWeeklyReportBars(periodStart, periodEnd, sets)
+func buildReportBars(periodStart, periodEnd, today time.Time, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
+	return buildWeeklyReportBars(periodStart, periodEnd, today, sets)
 }
 
-func buildWeeklyReportBars(periodStart, periodEnd time.Time, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
+func buildWeeklyReportBars(periodStart, periodEnd, today time.Time, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
 	type weekBar struct {
 		start time.Time
 		end   time.Time
@@ -296,18 +381,17 @@ func buildWeeklyReportBars(periodStart, periodEnd time.Time, sets []reportOccurr
 	}
 
 	var weeks []weekBar
-	for start := periodStart; !start.After(periodEnd); {
-		end := start.AddDate(0, 0, 6-int(start.Weekday()+6)%7)
+	for weekNumber, start := 1, periodStart; !start.After(periodEnd); weekNumber++ {
+		end := saturdayWeekEndFor(start)
 		if end.After(periodEnd) {
 			end = periodEnd
 		}
-		_, isoWeek := start.ISOWeek()
 		weeks = append(weeks, weekBar{
 			start: start,
 			end:   end,
 			bar: reportBarView{
-				Label:    fmt.Sprintf("Week %02d", isoWeek),
-				SubLabel: fmt.Sprintf("%s - %s", start.Format("02 Jan"), end.Format("02 Jan")),
+				Label:    fmt.Sprintf("Week %d", weekNumber),
+				SubLabel: reportChartRangeLabel(start, end, today),
 			},
 		})
 		start = end.AddDate(0, 0, 1)
@@ -325,7 +409,7 @@ func buildWeeklyReportBars(periodStart, periodEnd time.Time, sets []reportOccurr
 			due := dateOnly(occ.DueDate)
 			for i := range userWeeks {
 				if !due.Before(userWeeks[i].start) && !due.After(userWeeks[i].end) {
-					addOccurrence(&userWeeks[i].bar, occ)
+					addOccurrence(&userWeeks[i].bar, occ, today)
 					break
 				}
 			}
@@ -337,78 +421,180 @@ func buildWeeklyReportBars(periodStart, periodEnd time.Time, sets []reportOccurr
 	return finalizeReportBars(bars)
 }
 
-func buildWeeklyTaskReportBars(periodStart, periodEnd time.Time, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
-	type weekRange struct {
-		start    time.Time
-		end      time.Time
-		label    string
-		subLabel string
+func buildReportMatrix(weekStart, weekEnd, today time.Time, sets []reportOccurrenceSet) ([]reportWeekDayView, []reportTaskRowView, int, int) {
+	days := make([]reportWeekDayView, 0, 7)
+	dayIndexes := map[string]int{}
+	for d := dateOnly(weekStart); !d.After(weekEnd); d = d.AddDate(0, 0, 1) {
+		key := d.Format("2006-01-02")
+		dayIndexes[key] = len(days)
+		days = append(days, reportWeekDayView{
+			Date:      d.Format("02 Jan 2006"),
+			Label:     d.Format("Mon"),
+			ShortDate: d.Format("02 Jan"),
+			sortDate:  key,
+		})
 	}
 
-	var weeks []weekRange
-	for start := periodStart; !start.After(periodEnd); {
-		end := start.AddDate(0, 0, 6-int(start.Weekday()+6)%7)
+	type rowKey struct {
+		userID int64
+		taskID int64
+	}
+	rowIndexes := map[rowKey]int{}
+	rows := make([]reportTaskRowView, 0)
+	done := 0
+	due := 0
+
+	for _, set := range sets {
+		for _, occ := range set.Occurrences {
+			dueDate := dateOnly(occ.DueDate)
+			if dueDate.Before(weekStart) || dueDate.After(weekEnd) {
+				continue
+			}
+			dayIndex, ok := dayIndexes[dueDate.Format("2006-01-02")]
+			if !ok {
+				continue
+			}
+
+			countsTowardDue := occurrenceCountsTowardDue(occ, today)
+			if countsTowardDue {
+				due++
+			}
+			if occ.Status == services.StatusCompleted {
+				done++
+			}
+
+			key := rowKey{userID: set.User.ID, taskID: occ.Task.ID}
+			rowIndex, ok := rowIndexes[key]
+			if !ok {
+				rowIndex = len(rows)
+				rowIndexes[key] = rowIndex
+				rows = append(rows, reportTaskRowView{
+					TaskID:       occ.Task.ID,
+					TaskName:     occ.Task.Title,
+					Description:  occ.Task.Description.String,
+					Frequency:    string(occ.Task.Frequency),
+					UserName:     set.User.Name,
+					Cells:        make([]reportMatrixCellView, len(days)),
+					sortSequence: occ.Task.Sequence,
+					sortTitle:    occ.Task.Title,
+				})
+			}
+			rows[rowIndex].Cells[dayIndex] = reportMatrixCellView{
+				Scheduled:   true,
+				Status:      string(occ.Status),
+				StatusLabel: reportStatusLabel(occ.Status),
+				CompletedAt: reportCompletedAtLabel(occ.CompletedAt),
+			}
+		}
+	}
+
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].UserName != rows[j].UserName {
+			return rows[i].UserName < rows[j].UserName
+		}
+		if rows[i].sortSequence != rows[j].sortSequence {
+			return rows[i].sortSequence < rows[j].sortSequence
+		}
+		if rows[i].sortTitle != rows[j].sortTitle {
+			return rows[i].sortTitle < rows[j].sortTitle
+		}
+		return rows[i].TaskID < rows[j].TaskID
+	})
+	return days, rows, done, due
+}
+
+func selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd time.Time) (string, string) {
+	weeks, label := reportWeekRanges(monthStart, monthEnd)
+	for _, week := range weeks {
+		if !weekStart.After(week.end) && !weekEnd.Before(week.start) {
+			return week.label, fmt.Sprintf("%s - %s", weekStart.Format("02 Jan"), weekEnd.Format("02 Jan"))
+		}
+	}
+	return label, fmt.Sprintf("%s - %s", weekStart.Format("02 Jan"), weekEnd.Format("02 Jan"))
+}
+
+type reportWeekRange struct {
+	start    time.Time
+	end      time.Time
+	label    string
+	subLabel string
+}
+
+func reportWeekRanges(periodStart, periodEnd time.Time) ([]reportWeekRange, string) {
+	weeks := make([]reportWeekRange, 0)
+	lastLabel := "Week 1"
+	for weekNumber, start := 1, periodStart; !start.After(periodEnd); weekNumber++ {
+		end := saturdayWeekEndFor(start)
 		if end.After(periodEnd) {
 			end = periodEnd
 		}
-		_, isoWeek := start.ISOWeek()
-		weeks = append(weeks, weekRange{
+		label := fmt.Sprintf("Week %d", weekNumber)
+		lastLabel = label
+		weeks = append(weeks, reportWeekRange{
 			start:    start,
 			end:      end,
-			label:    fmt.Sprintf("Week %02d", isoWeek),
+			label:    label,
 			subLabel: fmt.Sprintf("%s - %s", start.Format("02 Jan"), end.Format("02 Jan")),
 		})
 		start = end.AddDate(0, 0, 1)
 	}
-
-	bars := make([]reportBarView, 0)
-	for _, set := range sets {
-		byTaskWeek := map[string]*reportBarView{}
-		for _, occ := range set.Occurrences {
-			due := dateOnly(occ.DueDate)
-			for weekIndex, week := range weeks {
-				if due.Before(week.start) || due.After(week.end) {
-					continue
-				}
-				key := fmt.Sprintf("%d:%d", weekIndex, occ.Task.ID)
-				bar, ok := byTaskWeek[key]
-				if !ok {
-					bar = &reportBarView{
-						Label:    week.label,
-						SubLabel: week.subLabel,
-						UserName: set.User.Name,
-						TaskName: occ.Task.Title,
-					}
-					byTaskWeek[key] = bar
-				}
-				addOccurrence(bar, occ)
-				break
-			}
-		}
-
-		userBars := make([]reportBarView, 0, len(byTaskWeek))
-		for _, bar := range byTaskWeek {
-			userBars = append(userBars, *bar)
-		}
-		sort.SliceStable(userBars, func(i, j int) bool {
-			if userBars[i].Label == userBars[j].Label {
-				return userBars[i].TaskName < userBars[j].TaskName
-			}
-			return userBars[i].Label < userBars[j].Label
-		})
-		bars = append(bars, userBars...)
-	}
-	return finalizeReportBars(bars)
+	return weeks, lastLabel
 }
 
-func addOccurrence(bar *reportBarView, occ services.TaskOccurrence) {
-	if occ.Status == services.StatusExempt {
+func saturdayWeekEndFor(day time.Time) time.Time {
+	day = dateOnly(day)
+	offset := (int(time.Friday) - int(day.Weekday()) + 7) % 7
+	return day.AddDate(0, 0, offset)
+}
+
+func reportChartRangeLabel(start, end, today time.Time) string {
+	start = dateOnly(start)
+	end = dateOnly(end)
+	today = dateOnly(today)
+	if start.After(today) {
+		return ""
+	}
+	if end.After(today) {
+		end = today
+	}
+	return fmt.Sprintf("%s - %s", start.Format("02 Jan"), end.Format("02 Jan"))
+}
+
+func reportStatusLabel(status services.OccurrenceStatus) string {
+	switch status {
+	case services.StatusCompleted:
+		return "completed"
+	case services.StatusMissed:
+		return "missed"
+	case services.StatusExempt:
+		return "exempt"
+	default:
+		return "pending"
+	}
+}
+
+func reportCompletedAtLabel(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.In(services.AppLocation).Format("02 Jan 2006 15:04")
+}
+
+func addOccurrence(bar *reportBarView, occ services.TaskOccurrence, today time.Time) {
+	if !occurrenceCountsTowardDue(occ, today) {
 		return
 	}
 	bar.Total++
 	if occ.Status == services.StatusCompleted {
 		bar.Completed++
 	}
+}
+
+func occurrenceCountsTowardDue(occ services.TaskOccurrence, today time.Time) bool {
+	if occ.Status == services.StatusExempt {
+		return false
+	}
+	return !dateOnly(occ.DueDate).After(dateOnly(today))
 }
 
 func finalizeReportBars(bars []reportBarView) ([]reportBarView, int, int) {

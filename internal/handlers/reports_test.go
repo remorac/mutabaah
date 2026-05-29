@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -42,99 +41,140 @@ func TestBuildReportBars_Weeks(t *testing.T) {
 		},
 	}
 
-	bars, done, due := buildReportBars(false, reportDate(2026, 5, 1), reportDate(2026, 5, 31), sets)
+	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 31), sets)
 	if done != 2 || due != 3 {
 		t.Fatalf("totals: got %d/%d, want 2/3", done, due)
 	}
-	if len(bars) != 5 {
-		t.Fatalf("expected 5 weekly bars, got %d", len(bars))
+	if len(bars) != 6 {
+		t.Fatalf("expected 6 Saturday-start weekly bars, got %d", len(bars))
 	}
-	if bars[0].Label != "Week 18" || bars[0].Percent != 50 || bars[0].Completed != 1 || bars[0].Total != 2 {
-		t.Fatalf("first week bar = %+v, want Week 18 1/2 50%%", bars[0])
+	if bars[0].Label != "Week 1" || bars[0].SubLabel != "01 May - 01 May" || bars[0].Percent != 100 || bars[0].Completed != 1 || bars[0].Total != 1 {
+		t.Fatalf("first week bar = %+v, want Week 1 1/1 100%%", bars[0])
 	}
-	if bars[1].Label != "Week 19" || bars[1].Percent != 100 || bars[1].Completed != 1 || bars[1].Total != 1 {
-		t.Fatalf("second week bar = %+v, want Week 19 1/1 100%%", bars[1])
-	}
-}
-
-func TestBuildReportBars_WeeksWithTaskSubgroup(t *testing.T) {
-	dhikr := reportTask(1, "Dhikr")
-	quran := reportTask(2, "Quran")
-	sets := []reportOccurrenceSet{
-		{
-			User: repository.User{ID: 1, Name: "Amina"},
-			Occurrences: []services.TaskOccurrence{
-				reportOcc(quran, reportDate(2026, 5, 25), services.StatusCompleted),
-				reportOcc(dhikr, reportDate(2026, 5, 25), services.StatusMissed),
-			},
-		},
-		{
-			User: repository.User{ID: 2, Name: "Bilal"},
-			Occurrences: []services.TaskOccurrence{
-				reportOcc(quran, reportDate(2026, 5, 25), services.StatusMissed),
-				reportOcc(dhikr, reportDate(2026, 5, 25), services.StatusCompleted),
-			},
-		},
-	}
-
-	bars, done, due := buildReportBars(true, reportDate(2026, 5, 1), reportDate(2026, 5, 31), sets)
-	if done != 2 || due != 4 {
-		t.Fatalf("totals: got %d/%d, want 2/4", done, due)
-	}
-	if len(bars) != 4 {
-		t.Fatalf("expected 4 bars, got %d", len(bars))
-	}
-	if bars[0].Label != "Week 22" || bars[0].TaskName != "Dhikr" || bars[0].UserName != "Amina" || bars[0].Percent != 0 {
-		t.Fatalf("first task subgroup bar = %+v, want Week 22/Dhikr/Amina 0%%", bars[0])
-	}
-	if bars[1].Label != "Week 22" || bars[1].TaskName != "Quran" || bars[1].UserName != "Amina" || bars[1].Percent != 100 {
-		t.Fatalf("second task subgroup bar = %+v, want Week 22/Quran/Amina 100%%", bars[1])
-	}
-	if bars[2].Label != "Week 22" || bars[2].TaskName != "Dhikr" || bars[2].UserName != "Bilal" || bars[2].Percent != 100 {
-		t.Fatalf("third task subgroup bar = %+v, want Week 22/Dhikr/Bilal 100%%", bars[2])
-	}
-	if bars[3].Label != "Week 22" || bars[3].TaskName != "Quran" || bars[3].UserName != "Bilal" || bars[3].Percent != 0 {
-		t.Fatalf("fourth task subgroup bar = %+v, want Week 22/Quran/Bilal 0%%", bars[3])
+	if bars[1].Label != "Week 2" || bars[1].SubLabel != "02 May - 08 May" || bars[1].Percent != 50 || bars[1].Completed != 1 || bars[1].Total != 2 {
+		t.Fatalf("second week bar = %+v, want Week 2 1/2 50%%", bars[1])
 	}
 }
 
-func TestReportChartJSONGroupsTasksInsideWeeks(t *testing.T) {
+func TestBuildReportBars_PercentageExcludesExempt(t *testing.T) {
+	task := reportTask(1, "Dhikr")
+	sets := []reportOccurrenceSet{{
+		User: repository.User{ID: 1, Name: "Amina"},
+		Occurrences: []services.TaskOccurrence{
+			reportOcc(task, reportDate(2026, 5, 2), services.StatusCompleted),
+			reportOcc(task, reportDate(2026, 5, 3), services.StatusMissed),
+			reportOcc(task, reportDate(2026, 5, 4), services.StatusPending),
+			reportOcc(task, reportDate(2026, 5, 5), services.StatusExempt),
+		},
+	}}
+
+	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 31), sets)
+	if done != 1 || due != 3 {
+		t.Fatalf("totals: got %d/%d, want 1/3 with exempt excluded", done, due)
+	}
+	if bars[1].Completed != 1 || bars[1].Total != 3 || bars[1].Percent != 33 {
+		t.Fatalf("week 2 bar = %+v, want 1/3 rounded to 33%%", bars[1])
+	}
+}
+
+func TestBuildReportBars_PercentageExcludesFutureOccurrences(t *testing.T) {
+	task := reportTask(1, "Dhikr")
+	sets := []reportOccurrenceSet{{
+		User: repository.User{ID: 1, Name: "Amina"},
+		Occurrences: []services.TaskOccurrence{
+			reportOcc(task, reportDate(2026, 5, 30), services.StatusCompleted),
+			reportOcc(task, reportDate(2026, 5, 31), services.StatusPending),
+		},
+	}}
+
+	bars, done, due := buildReportBars(reportDate(2026, 5, 1), reportDate(2026, 5, 31), reportDate(2026, 5, 30), sets)
+	if done != 1 || due != 1 {
+		t.Fatalf("totals: got %d/%d, want only through today 1/1", done, due)
+	}
+	if bars[5].Completed != 1 || bars[5].Total != 1 || bars[5].Percent != 100 {
+		t.Fatalf("future-excluding bar = %+v, want 1/1 100%%", bars[5])
+	}
+	if bars[5].SubLabel != "30 May - 30 May" {
+		t.Fatalf("future-excluding range label = %q, want 30 May - 30 May", bars[5].SubLabel)
+	}
+}
+
+func TestReportChartRangeLabel_EmptyForFutureOnlyBucket(t *testing.T) {
+	got := reportChartRangeLabel(reportDate(2026, 6, 1), reportDate(2026, 6, 5), reportDate(2026, 5, 30))
+	if got != "" {
+		t.Fatalf("future-only chart range label = %q, want empty", got)
+	}
+}
+
+func TestBuildReportBars_WeekLabelsRestartByMonth(t *testing.T) {
+	task := reportTask(1, "Dhikr")
+	sets := []reportOccurrenceSet{{
+		User:        repository.User{ID: 1, Name: "Amina"},
+		Occurrences: []services.TaskOccurrence{reportOcc(task, reportDate(2026, 2, 1), services.StatusCompleted)},
+	}}
+
+	janBars, _, _ := buildReportBars(reportDate(2026, 1, 1), reportDate(2026, 1, 31), reportDate(2026, 12, 31), sets)
+	febBars, _, _ := buildReportBars(reportDate(2026, 2, 1), reportDate(2026, 2, 28), reportDate(2026, 12, 31), sets)
+	if janBars[0].Label != "Week 1" || febBars[0].Label != "Week 1" {
+		t.Fatalf("month labels = January %q February %q, want both Week 1", janBars[0].Label, febBars[0].Label)
+	}
+	if febBars[0].SubLabel != "01 Feb - 06 Feb" {
+		t.Fatalf("first partial week = %q, want 01 Feb - 06 Feb", febBars[0].SubLabel)
+	}
+}
+
+func TestAggregateReportPDFBars_RecomputesPercentFromTotals(t *testing.T) {
+	bars := aggregateReportPDFBars([]reportBarView{
+		{Label: "Week 2", SubLabel: "02 May - 08 May", UserName: "Amina", Completed: 1, Total: 2, Percent: 50},
+		{Label: "Week 2", SubLabel: "02 May - 08 May", UserName: "Bilal", Completed: 2, Total: 2, Percent: 100},
+	})
+	if len(bars) != 1 {
+		t.Fatalf("aggregated bars = %d, want 1", len(bars))
+	}
+	if bars[0].Completed != 3 || bars[0].Total != 4 || bars[0].Percent != 75 {
+		t.Fatalf("aggregated bar = %+v, want 3/4 75%%", bars[0])
+	}
+}
+
+func TestReportChartJSONGroupsByUserOnly(t *testing.T) {
 	js := reportChartJSON([]reportBarView{
-		{Label: "Week 22", SubLabel: "25 May - 31 May", TaskName: "Dhikr", UserName: "Amina", Completed: 1, Total: 2},
-		{Label: "Week 22", SubLabel: "25 May - 31 May", TaskName: "Quran", UserName: "Amina", Completed: 2, Total: 2},
-	}, true)
+		{Label: "Week 4", SubLabel: "18 May - 24 May", UserName: "Amina", Completed: 1, Total: 2},
+		{Label: "Week 4", SubLabel: "18 May - 24 May", UserName: "Bilal", Completed: 2, Total: 2},
+	})
 
 	var data reportChartData
 	if err := json.Unmarshal([]byte(js), &data); err != nil {
 		t.Fatalf("chart json unmarshal: %v", err)
 	}
-	if len(data.Labels) != 1 || data.Labels[0] != "Week 22" {
+	if len(data.Labels) != 1 || data.Labels[0] != "Week 4" {
 		t.Fatalf("labels = %+v, want one weekly label", data.Labels)
 	}
-	if len(data.Users) != 2 || data.Users[0].Name != "Dhikr" || data.Users[1].Name != "Quran" {
-		t.Fatalf("series = %+v, want task series inside the week", data.Users)
+	if len(data.Users) != 2 || data.Users[0].Name != "Amina" || data.Users[1].Name != "Bilal" {
+		t.Fatalf("series = %+v, want user series", data.Users)
+	}
+	if data.Users[0].Data[0] != 50 || data.Users[0].Percentage[0] != 50 || data.Users[0].Completed[0] != 1 || data.Users[0].Total[0] != 2 {
+		t.Fatalf("Amina chart data = %+v, want 50%% with 1/2 metadata", data.Users[0])
+	}
+	if data.Users[1].Data[0] != 100 || data.Users[1].Percentage[0] != 100 || data.Users[1].Completed[0] != 2 || data.Users[1].Total[0] != 2 {
+		t.Fatalf("Bilal chart data = %+v, want 100%% with 2/2 metadata", data.Users[1])
 	}
 }
 
 func TestParseReportFallbacks(t *testing.T) {
-	start, value := parseReportMonth("not-a-month", reportDate(2026, 5, 27))
-	if got := start.Format("2006-01-02"); got != "2026-05-01" {
-		t.Fatalf("fallback month start = %s, want 2026-05-01", got)
+	start, value := parseReportWeek("not-a-week", reportDate(2026, 5, 27))
+	if got := start.Format("2006-01-02"); got != "2026-05-23" {
+		t.Fatalf("fallback week start = %s, want 2026-05-23", got)
 	}
-	if value != "2026-05" {
-		t.Fatalf("fallback month value = %s, want 2026-05", value)
+	if value != "2026-W22" {
+		t.Fatalf("fallback week value = %s, want 2026-W22", value)
 	}
-	req := httptest.NewRequest("GET", "/reports?group_by_tasks=1", nil)
-	if !parseReportGroupByTasks(req) {
-		t.Fatal("group_by_tasks checkbox was not parsed")
+
+	start, value = parseReportWeek("not-a-week", reportDate(2026, 5, 30))
+	if got := start.Format("2006-01-02"); got != "2026-05-30" {
+		t.Fatalf("Saturday fallback week start = %s, want 2026-05-30", got)
 	}
-	req = httptest.NewRequest("GET", "/reports?subgroup=tasks", nil)
-	if !parseReportGroupByTasks(req) {
-		t.Fatal("legacy subgroup tasks parameter was not parsed")
-	}
-	req = httptest.NewRequest("GET", "/reports", nil)
-	if parseReportGroupByTasks(req) {
-		t.Fatal("empty group_by_tasks parsed as selected")
+	if value != "2026-W23" {
+		t.Fatalf("Saturday fallback week value = %s, want 2026-W23", value)
 	}
 }
 
@@ -169,13 +209,82 @@ func TestSelectedReportUsers(t *testing.T) {
 	}
 }
 
-func TestParseReportMonthValid(t *testing.T) {
-	start, value := parseReportMonth("2026-01", reportDate(2026, 5, 27))
-	if got := start.Format("2006-01-02"); got != "2026-01-01" {
-		t.Fatalf("month start = %s, want 2026-01-01", got)
+func TestParseReportWeekValid(t *testing.T) {
+	start, value := parseReportWeek("2026-W01", reportDate(2026, 5, 27))
+	if got := start.Format("2006-01-02"); got != "2025-12-27" {
+		t.Fatalf("week start = %s, want 2025-12-27", got)
 	}
-	if value != "2026-01" {
-		t.Fatalf("month value = %s, want 2026-01", value)
+	if value != "2026-W01" {
+		t.Fatalf("week value = %s, want 2026-W01", value)
+	}
+
+	start, value = parseReportWeek("2026-05-26", reportDate(2026, 1, 1))
+	if got := start.Format("2006-01-02"); got != "2026-05-23" {
+		t.Fatalf("date-selected week start = %s, want 2026-05-23", got)
+	}
+	if value != "2026-W22" {
+		t.Fatalf("date-selected week value = %s, want 2026-W22", value)
+	}
+
+	start, value = parseReportWeek("2026-05-30", reportDate(2026, 1, 1))
+	if got := start.Format("2006-01-02"); got != "2026-05-30" {
+		t.Fatalf("Saturday-selected week start = %s, want 2026-05-30", got)
+	}
+	if value != "2026-W23" {
+		t.Fatalf("Saturday-selected week value = %s, want 2026-W23", value)
+	}
+}
+
+func TestBuildReportMatrix_SelectedWeekStatusesAndBlankCells(t *testing.T) {
+	dhikr := reportTask(1, "Dhikr")
+	dhikr.Sequence = 2
+	fajr := reportTask(2, "Fajr")
+	fajr.Sequence = 1
+	sets := []reportOccurrenceSet{{
+		User: repository.User{ID: 1, Name: "Amina"},
+		Occurrences: []services.TaskOccurrence{
+			reportOcc(dhikr, reportDate(2026, 5, 24), services.StatusCompleted),
+			reportOcc(dhikr, reportDate(2026, 5, 25), services.StatusCompleted),
+			reportOcc(dhikr, reportDate(2026, 5, 26), services.StatusMissed),
+			reportOcc(dhikr, reportDate(2026, 5, 27), services.StatusPending),
+			reportOcc(dhikr, reportDate(2026, 5, 28), services.StatusExempt),
+			reportOcc(dhikr, reportDate(2026, 5, 29), services.StatusPending),
+			reportOcc(fajr, reportDate(2026, 5, 26), services.StatusCompleted),
+			reportOcc(dhikr, reportDate(2026, 6, 1), services.StatusCompleted),
+		},
+	}}
+
+	days, rows, done, due := buildReportMatrix(reportDate(2026, 5, 23), reportDate(2026, 5, 29), reportDate(2026, 5, 27), sets)
+	if len(days) != 7 || days[0].ShortDate != "23 May" || days[0].Label != "Sat" || days[6].ShortDate != "29 May" || days[6].Label != "Fri" {
+		t.Fatalf("days = %+v, want selected week date columns", days)
+	}
+	if done != 3 || due != 5 {
+		t.Fatalf("selected week totals = %d/%d, want 3/5 with future and exempt excluded", done, due)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("matrix rows = %d, want 2", len(rows))
+	}
+	if rows[0].TaskName != "Fajr" || rows[1].TaskName != "Dhikr" {
+		t.Fatalf("row order = %q, %q; want sequence order Fajr, Dhikr", rows[0].TaskName, rows[1].TaskName)
+	}
+	if rows[0].Cells[0].Scheduled || rows[0].Cells[1].Scheduled || rows[0].Cells[2].Scheduled || !rows[0].Cells[3].Scheduled || rows[0].Cells[3].Status != "completed" {
+		t.Fatalf("Fajr cells = %+v, want blank Saturday-Monday and completed Tuesday", rows[0].Cells)
+	}
+	wantStatuses := map[int]string{
+		1: "completed",
+		2: "completed",
+		3: "missed",
+		4: "pending",
+		5: "exempt",
+		6: "pending",
+	}
+	for i, want := range wantStatuses {
+		if !rows[1].Cells[i].Scheduled || rows[1].Cells[i].Status != want {
+			t.Fatalf("Dhikr cell %d = %+v, want %s", i, rows[1].Cells[i], want)
+		}
+	}
+	if rows[1].Cells[0].Scheduled {
+		t.Fatalf("Dhikr edge cells = %+v, want blanks for non-scheduled dates", rows[1].Cells)
 	}
 }
 
@@ -189,17 +298,41 @@ func TestLoadTemplatesIncludesReports(t *testing.T) {
 	}
 }
 
-func TestBuildReportPDFContainsChartAndTabulation(t *testing.T) {
+func TestBuildReportPDFContainsPercentageChartAndStatusMatrix(t *testing.T) {
 	pdf, err := buildReportPDF(reportData{
-		MonthValue:       "2026-05",
+		WeekValue:        "2026-W22",
+		WeekLabel:        "Week 5",
+		WeekRangeLabel:   "25 May - 31 May",
 		MonthLabel:       "May 2026",
-		GroupByTasks:     true,
 		SelectedUserName: "Amina",
-		TotalDone:        3,
-		TotalDue:         4,
-		TotalPct:         75,
+		TotalDone:        1,
+		TotalDue:         2,
+		TotalPct:         50,
 		Bars: []reportBarView{
-			{Label: "Week 21", SubLabel: "25 May - 31 May", TaskName: "Dhikr", UserName: "Amina", Completed: 3, Total: 4, Percent: 75},
+			{Label: "Week 5", SubLabel: "25 May - 31 May", UserName: "Amina", Completed: 1, Total: 2, Percent: 50},
+		},
+		WeekDays: []reportWeekDayView{
+			{ShortDate: "25 May"},
+			{ShortDate: "26 May"},
+			{ShortDate: "27 May"},
+			{ShortDate: "28 May"},
+			{ShortDate: "29 May"},
+			{ShortDate: "30 May"},
+			{ShortDate: "31 May"},
+		},
+		TaskRows: []reportTaskRowView{
+			{
+				TaskName:    "Dhikr",
+				Description: "Morning adhkar",
+				Cells: []reportMatrixCellView{
+					{Scheduled: true, Status: "completed", StatusLabel: "completed"},
+					{Scheduled: true, Status: "missed", StatusLabel: "missed"},
+					{Scheduled: true, Status: "exempt", StatusLabel: "exempt"},
+					{Scheduled: true, Status: "pending", StatusLabel: "pending"},
+					{},
+					{},
+				},
+			},
 		},
 	})
 	if err != nil {
@@ -207,15 +340,49 @@ func TestBuildReportPDFContainsChartAndTabulation(t *testing.T) {
 	}
 	for _, want := range [][]byte{
 		[]byte("%PDF-1.4"),
-		[]byte("Chart"),
-		[]byte("Tabulation"),
-		[]byte("Week 21"),
+		[]byte("MUTABA'AH REPORT"),
+		[]byte("Completion"),
+		[]byte("100"),
+		[]byte("Week 5"),
+		[]byte(`Week 5 \(50%\)`),
+		[]byte("25 May - 31 May"),
 		[]byte("Dhikr"),
+		[]byte("Morning adhkar"),
+		[]byte("26 May"),
 		[]byte("Amina"),
-		[]byte("User: Amina"),
 	} {
 		if !bytes.Contains(pdf, want) {
 			t.Fatalf("PDF does not contain %q", want)
+		}
+	}
+	if bytes.Contains(pdf, []byte("Monthly Comparison")) {
+		t.Fatal("PDF contains removed Monthly Comparison table heading")
+	}
+	if bytes.Contains(pdf, []byte("completion %")) {
+		t.Fatal("PDF contains removed chart legend")
+	}
+	if bytes.Contains(pdf, []byte("User: Amina")) {
+		t.Fatal("PDF contains removed user label")
+	}
+	for _, removed := range [][]byte{
+		[]byte("(D) Tj"),
+		[]byte("(M) Tj"),
+		[]byte("(E) Tj"),
+		[]byte("(P) Tj"),
+	} {
+		if bytes.Contains(pdf, removed) {
+			t.Fatalf("PDF contains removed status letter text %q", removed)
+		}
+	}
+	for _, wantVector := range [][]byte{
+		[]byte("0.120 0.550 0.220 RG"),
+		[]byte("0.720 0.120 0.120 RG"),
+		[]byte("0.700 0.180 0.450 RG"),
+		[]byte("0.390 0.450 0.550 RG"),
+		[]byte(" c S"),
+	} {
+		if !bytes.Contains(pdf, wantVector) {
+			t.Fatalf("PDF does not contain status icon vector command %q", wantVector)
 		}
 	}
 }
