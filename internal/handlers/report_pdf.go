@@ -334,9 +334,9 @@ func drawReportPDFChart(p *simplePDF, bars []reportBarView, y float64) float64 {
 func drawReportPDFChartLabel(p *simplePDF, centerX, y float64, bar reportPDFChartBar) {
 	name := truncatePDFText(bar.Label, 8)
 	value := fmt.Sprintf("(%d%%)", bar.Percent)
-	nameWidth := float64(len(name)) * 7 * 0.48
-	gapWidth := 7 * 0.72
-	valueWidth := float64(len(value)) * 7 * 0.48
+	nameWidth := p.textWidth("F1", 7, name)
+	gapWidth := 5.5
+	valueWidth := p.textWidth("F2", 7, value)
 	x := centerX - (nameWidth+gapWidth+valueWidth)/2
 	p.text(x, y, 7, name)
 	p.boldText(x+nameWidth+gapWidth, y, 7, value)
