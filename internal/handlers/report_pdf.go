@@ -265,8 +265,8 @@ func drawReportPDFHeader(p *simplePDF, report reportData, y float64) float64 {
 	p.text(left+16, top-64, 11, report.WeekRangeLabel)
 
 	chipY := top - 66
-	chipWidth := 72.0
-	chipGap := 8.0
+	chipWidth := 60.0
+	chipGap := 6.0
 	drawReportPDFChip(p, left+width-chipWidth*3-chipGap*2-16, chipY, chipWidth, "Completion", fmt.Sprintf("%d%%", report.TotalPct), 0.90, 0.95, 1.00)
 	drawReportPDFChip(p, left+width-chipWidth*2-chipGap-16, chipY, chipWidth, "Done", fmt.Sprintf("%d", report.TotalDone), 0.88, 0.96, 0.88)
 	drawReportPDFChip(p, left+width-chipWidth-16, chipY, chipWidth, "Due", fmt.Sprintf("%d", report.TotalDue), 1.00, 0.95, 0.82)
