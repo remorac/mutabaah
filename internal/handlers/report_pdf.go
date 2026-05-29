@@ -78,6 +78,12 @@ func (p *simplePDF) text(x, y, size float64, value string) {
 	_, _ = fmt.Fprintf(&p.buf, "0.09 0.12 0.16 rg BT /F1 %.2f Tf %.2f %.2f Td (%s) Tj ET\n", size, x, y, escapePDFString(value))
 }
 
+func (p *simplePDF) centeredText(x, y, width, size float64, value string) {
+	value = sanitizePDFText(value)
+	textWidth := float64(len(value)) * size * 0.48
+	p.text(x+(width-textWidth)/2, y, size, value)
+}
+
 func (p *simplePDF) line(x1, y1, x2, y2 float64) {
 	_, _ = fmt.Fprintf(&p.buf, "0.55 0.60 0.68 RG %.2f %.2f m %.2f %.2f l S\n", x1, y1, x2, y2)
 }
@@ -106,6 +112,59 @@ func (p *simplePDF) rect(x, y, w, h float64, r, g, b float64) {
 		h = -h
 	}
 	_, _ = fmt.Fprintf(&p.buf, "%.3f %.3f %.3f rg %.2f %.2f %.2f %.2f re f\n", r, g, b, x, y, w, h)
+}
+
+func (p *simplePDF) roundedRect(x, y, w, h, radius float64, r, g, b float64) {
+	if h < 0 {
+		y += h
+		h = -h
+	}
+	if radius > w/2 {
+		radius = w / 2
+	}
+	if radius > h/2 {
+		radius = h / 2
+	}
+	k := radius * 0.5522847498
+	_, _ = fmt.Fprintf(
+		&p.buf,
+		"%.3f %.3f %.3f rg %.2f %.2f m %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c f\n",
+		r, g, b,
+		x+radius, y,
+		x+w-radius, y,
+		x+w-radius+k, y, x+w, y+radius-k, x+w, y+radius,
+		x+w, y+h-radius,
+		x+w, y+h-radius+k, x+w-radius+k, y+h, x+w-radius, y+h,
+		x+radius, y+h,
+		x+radius-k, y+h, x, y+h-radius+k, x, y+h-radius,
+		x, y+radius,
+		x, y+radius-k, x+radius-k, y, x+radius, y,
+	)
+}
+
+func (p *simplePDF) topRoundedRect(x, y, w, h, radius float64, r, g, b float64) {
+	if h < 0 {
+		y += h
+		h = -h
+	}
+	if radius > w/2 {
+		radius = w / 2
+	}
+	if radius > h {
+		radius = h
+	}
+	k := radius * 0.5522847498
+	_, _ = fmt.Fprintf(
+		&p.buf,
+		"%.3f %.3f %.3f rg %.2f %.2f m %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l h f\n",
+		r, g, b,
+		x, y,
+		x, y+h-radius,
+		x, y+h-radius+k, x+radius-k, y+h, x+radius, y+h,
+		x+w-radius, y+h,
+		x+w-radius+k, y+h, x+w, y+h-radius+k, x+w, y+h-radius,
+		x+w, y,
+	)
 }
 
 func (p *simplePDF) strokeRect(x, y, w, h float64) {
@@ -142,22 +201,22 @@ func drawReportPDFHeader(p *simplePDF, report reportData, y float64) float64 {
 	left := pdfMargin
 	width := pdfPageWidth - pdfMargin*2
 	top := y + 8
-	height := 102.0
+	height := 82.0
 	bottom := top - height
 
-	p.rect(left, bottom, width, height, 0.95, 0.98, 1.00)
-	p.rect(left, top-18, width, 18, 0.31, 0.48, 0.65)
-	p.text(left+16, top-13, 10, "MUTABA'AH REPORT")
+	p.roundedRect(left, bottom, width, height, 6, 0.95, 0.98, 1.00)
+	p.topRoundedRect(left, top-18, width, 18, 6, 0.31, 0.48, 0.65)
+	p.text(left+16, top-13, 10, "MUTABA'AH YAUMIYAH")
 	headerName := report.SelectedUserName
 	if headerName == "" {
 		headerName = "Report"
 	}
-	p.text(left+16, top-42, 20, headerName)
-	p.text(left+16, top-60, 11, fmt.Sprintf("%s | %s", report.WeekRangeLabel, report.MonthLabel))
+	p.text(left+16, top-46, 20, headerName)
+	p.text(left+16, top-64, 11, fmt.Sprintf("%s | %s", report.WeekRangeLabel, report.MonthLabel))
 
-	chipY := bottom + 16
-	chipWidth := 86.0
-	chipGap := 10.0
+	chipY := top - 66
+	chipWidth := 72.0
+	chipGap := 8.0
 	drawReportPDFChip(p, left+width-chipWidth*3-chipGap*2-16, chipY, chipWidth, "Completion", fmt.Sprintf("%d%%", report.TotalPct), 0.90, 0.95, 1.00)
 	drawReportPDFChip(p, left+width-chipWidth*2-chipGap-16, chipY, chipWidth, "Done", fmt.Sprintf("%d", report.TotalDone), 0.88, 0.96, 0.88)
 	drawReportPDFChip(p, left+width-chipWidth-16, chipY, chipWidth, "Due", fmt.Sprintf("%d", report.TotalDue), 1.00, 0.95, 0.82)
@@ -166,7 +225,7 @@ func drawReportPDFHeader(p *simplePDF, report reportData, y float64) float64 {
 }
 
 func drawReportPDFChip(p *simplePDF, x, y, width float64, label, value string, r, g, b float64) {
-	p.rect(x, y, width, 32, r, g, b)
+	p.roundedRect(x, y, width, 32, 5, r, g, b)
 	p.text(x+8, y+19, 8, label)
 	p.text(x+8, y+7, 13, value)
 }
@@ -204,7 +263,9 @@ func drawReportPDFChart(p *simplePDF, bars []reportBarView, y float64) float64 {
 	for i, bar := range chartBars {
 		x := left + gap + float64(i)*(barWidth+gap)
 		barHeight := height * float64(bar.Percent) / 100.0
-		p.rect(x, bottom, barWidth, barHeight, 0.31, 0.48, 0.65)
+		if barHeight > 0 {
+			p.topRoundedRect(x, bottom, barWidth, barHeight, 3, 0.31, 0.48, 0.65)
+		}
 		if maxBars <= 14 || i%2 == 0 {
 			label := truncatePDFText(fmt.Sprintf("%s (%d%%)", bar.Label, bar.Percent), 16)
 			labelWidth := float64(len(label)) * 3.5
@@ -225,11 +286,11 @@ func drawReportPDFMatrixTable(p *simplePDF, heading string, days []reportWeekDay
 	dayWidth := (pdfPageWidth - pdfMargin*2 - taskWidth) / 7.0
 
 	drawHeader := func() {
-		p.rect(pdfMargin, y-4, pdfPageWidth-pdfMargin*2, rowHeight, 0.78, 0.86, 0.96)
-		p.text(pdfMargin+4, y+8, 9, "Task")
+		p.topRoundedRect(pdfMargin, y-4, pdfPageWidth-pdfMargin*2, rowHeight, 5, 0.78, 0.86, 0.96)
+		p.centeredText(pdfMargin, y+8, taskWidth, 9, "Task")
 		for i, day := range days {
 			x := pdfMargin + taskWidth + float64(i)*dayWidth
-			p.text(x+3, y+8, 8, day.ShortDate)
+			p.centeredText(x, y+8, dayWidth, 8, day.ShortDate)
 		}
 		y -= rowHeight
 	}
@@ -261,7 +322,7 @@ func drawReportPDFMatrixTable(p *simplePDF, heading string, days []reportWeekDay
 			}
 			x := pdfMargin + taskWidth + float64(i)*dayWidth
 			r, g, b := reportPDFCellBackground(cell.Status)
-			p.rect(x+3, y+3, dayWidth-6, rowHeight-12, r, g, b)
+			p.roundedRect(x+3, y+3, dayWidth-6, rowHeight-12, 4, r, g, b)
 			drawReportPDFStatusIcon(p, cell.Status, x+dayWidth/2, y+12)
 		}
 		p.line(pdfMargin, y-4, pdfPageWidth-pdfMargin, y-4)

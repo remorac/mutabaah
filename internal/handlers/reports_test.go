@@ -423,14 +423,15 @@ func TestReportTemplateRendersUserFilterForAdmin(t *testing.T) {
 			Name: "Admin",
 			Role: repository.UsersRoleAdmin,
 		}, "csrf-token", "Report — Mutaba'ah Yaumiyah"),
-		WeekDateValue:   "2026-05-30",
-		WeekDateMin:     reportDateInputMin(time.Saturday),
-		WeekDateStep:    7,
-		WeekLabel:       "Week 5",
-		MonthLabel:      "May 2026",
-		CanFilterUsers:  true,
-		HasSelectedUser: true,
-		ChartJSON:       template.JS("{}"),
+		WeekDateValue:     "2026-05-30",
+		WeekDateMin:       reportDateInputMin(time.Saturday),
+		WeekDateStep:      7,
+		WeekLabel:         "Week 5",
+		MonthLabel:        "May 2026",
+		CanFilterUsers:    true,
+		HasSelectedUser:   true,
+		ExportCacheBuster: 1777777777000,
+		ChartJSON:         template.JS("{}"),
 		UserOptions: []reportUserOption{
 			{ID: 1, Name: "Admin", Selected: true},
 			{ID: 2, Name: "User"},
@@ -446,7 +447,7 @@ func TestReportTemplateRendersUserFilterForAdmin(t *testing.T) {
 	for _, want := range []string{
 		`name="user_id"`,
 		`<span class="label-text font-medium">User</span>`,
-		`/reports/export.pdf?week_start=2026-05-30&user_id=1`,
+		`/reports/export.pdf?week_start=2026-05-30&user_id=1&ts=1777777777000`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("rendered admin report missing %s: %s", want, body)
@@ -465,13 +466,14 @@ func TestReportTemplateHidesUserFilterForRegularUser(t *testing.T) {
 			Name: "Amina",
 			Role: repository.UsersRoleUser,
 		}, "csrf-token", "Report — Mutaba'ah Yaumiyah"),
-		WeekDateValue:   "2026-05-30",
-		WeekDateMin:     reportDateInputMin(time.Saturday),
-		WeekDateStep:    7,
-		WeekLabel:       "Week 5",
-		MonthLabel:      "May 2026",
-		HasSelectedUser: true,
-		ChartJSON:       template.JS("{}"),
+		WeekDateValue:     "2026-05-30",
+		WeekDateMin:       reportDateInputMin(time.Saturday),
+		WeekDateStep:      7,
+		WeekLabel:         "Week 5",
+		MonthLabel:        "May 2026",
+		HasSelectedUser:   true,
+		ExportCacheBuster: 1777777777000,
+		ChartJSON:         template.JS("{}"),
 	}
 	rec := httptest.NewRecorder()
 
@@ -484,7 +486,7 @@ func TestReportTemplateHidesUserFilterForRegularUser(t *testing.T) {
 		`name="week_start"`,
 		`Export PDF`,
 		`href="/reports"`,
-		`/reports/export.pdf?week_start=2026-05-30"`,
+		`/reports/export.pdf?week_start=2026-05-30&ts=1777777777000"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("rendered user report missing %s: %s", want, body)
@@ -606,7 +608,7 @@ func TestBuildReportPDFContainsPercentageChartAndStatusMatrix(t *testing.T) {
 	}
 	for _, want := range [][]byte{
 		[]byte("%PDF-1.4"),
-		[]byte("MUTABA'AH REPORT"),
+		[]byte("MUTABA'AH YAUMIYAH"),
 		[]byte("Completion"),
 		[]byte("100"),
 		[]byte("Week 5"),

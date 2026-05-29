@@ -73,23 +73,24 @@ type reportTaskRowView struct {
 
 type reportPageView struct {
 	BaseView
-	WeekValue       string
-	WeekDateValue   string
-	WeekDateMin     string
-	WeekDateStep    int
-	WeekLabel       string
-	WeekRangeLabel  string
-	MonthLabel      string
-	CanFilterUsers  bool
-	HasSelectedUser bool
-	UserOptions     []reportUserOption
-	Bars            []reportBarView
-	WeekDays        []reportWeekDayView
-	TaskRows        []reportTaskRowView
-	ChartJSON       template.JS
-	TotalDone       int
-	TotalDue        int
-	TotalPct        int
+	WeekValue         string
+	WeekDateValue     string
+	WeekDateMin       string
+	WeekDateStep      int
+	WeekLabel         string
+	WeekRangeLabel    string
+	MonthLabel        string
+	CanFilterUsers    bool
+	HasSelectedUser   bool
+	ExportCacheBuster int64
+	UserOptions       []reportUserOption
+	Bars              []reportBarView
+	WeekDays          []reportWeekDayView
+	TaskRows          []reportTaskRowView
+	ChartJSON         template.JS
+	TotalDone         int
+	TotalDue          int
+	TotalPct          int
 }
 
 type reportChartData struct {
@@ -146,24 +147,25 @@ func (h *ReportHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view := reportPageView{
-		BaseView:        NewBaseView(current, token, "Report — Mutaba'ah Yaumiyah"),
-		WeekValue:       report.WeekValue,
-		WeekDateValue:   report.WeekDateValue,
-		WeekDateMin:     report.WeekDateMin,
-		WeekDateStep:    report.WeekDateStep,
-		WeekLabel:       report.WeekLabel,
-		WeekRangeLabel:  report.WeekRangeLabel,
-		MonthLabel:      report.MonthLabel,
-		CanFilterUsers:  report.CanFilterUsers,
-		HasSelectedUser: report.HasSelectedUser,
-		UserOptions:     report.UserOptions,
-		Bars:            report.Bars,
-		WeekDays:        report.WeekDays,
-		TaskRows:        report.TaskRows,
-		ChartJSON:       reportChartJSON(report.Bars),
-		TotalDone:       report.TotalDone,
-		TotalDue:        report.TotalDue,
-		TotalPct:        report.TotalPct,
+		BaseView:          NewBaseView(current, token, "Report — Mutaba'ah Yaumiyah"),
+		WeekValue:         report.WeekValue,
+		WeekDateValue:     report.WeekDateValue,
+		WeekDateMin:       report.WeekDateMin,
+		WeekDateStep:      report.WeekDateStep,
+		WeekLabel:         report.WeekLabel,
+		WeekRangeLabel:    report.WeekRangeLabel,
+		MonthLabel:        report.MonthLabel,
+		CanFilterUsers:    report.CanFilterUsers,
+		HasSelectedUser:   report.HasSelectedUser,
+		ExportCacheBuster: h.now().UnixMilli(),
+		UserOptions:       report.UserOptions,
+		Bars:              report.Bars,
+		WeekDays:          report.WeekDays,
+		TaskRows:          report.TaskRows,
+		ChartJSON:         reportChartJSON(report.Bars),
+		TotalDone:         report.TotalDone,
+		TotalDue:          report.TotalDue,
+		TotalPct:          report.TotalPct,
 	}
 	if err := h.tmpl.Render(w, "reports/index.html", view); err != nil {
 		h.errs.ServerError(w, r, err)

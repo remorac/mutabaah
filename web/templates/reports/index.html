@@ -9,7 +9,7 @@
       <p class="text-sm opacity-70">{{.WeekLabel}} | {{.WeekRangeLabel}}</p>
       <p class="text-xs opacity-50">{{.MonthLabel}} comparison</p>
     </div>
-    <a href="/reports/export.pdf?week_start={{.WeekDateValue}}{{if .CanFilterUsers}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}{{end}}" class="btn btn-outline btn-sm shadow-sm">
+    <a href="/reports/export.pdf?week_start={{.WeekDateValue}}{{if .CanFilterUsers}}{{range .UserOptions}}{{if .Selected}}&user_id={{.ID}}{{end}}{{end}}{{end}}&ts={{.ExportCacheBuster}}" class="btn btn-outline btn-sm shadow-sm">
       <i data-lucide="file-down" class="w-4 h-4"></i>
       Export PDF
     </a>
