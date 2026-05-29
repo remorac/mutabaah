@@ -3,8 +3,11 @@ package handlers
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/jung-kurt/gofpdf"
 	"github.com/remorac/mutabaah/internal/services"
 )
 
@@ -15,63 +18,87 @@ const (
 )
 
 type simplePDF struct {
-	pages []string
-	buf   strings.Builder
+	pdf *gofpdf.Fpdf
 }
 
-func newSimplePDF() *simplePDF {
-	p := &simplePDF{}
+func newSimplePDF() (*simplePDF, error) {
+	pdf := gofpdf.New("P", "pt", "A4", "")
+	pdf.SetMargins(0, 0, 0)
+	pdf.SetAutoPageBreak(false, 0)
+	pdf.SetCompression(false)
+
+	regular, err := readReportPDFFont("Manrope-Regular.ttf")
+	if err != nil {
+		return nil, err
+	}
+	bold, err := readReportPDFFont("Manrope-Bold.ttf")
+	if err != nil {
+		return nil, err
+	}
+	pdf.AddUTF8FontFromBytes("Manrope", "", regular)
+	pdf.AddUTF8FontFromBytes("Manrope", "B", bold)
+	if err := pdf.Error(); err != nil {
+		return nil, err
+	}
+
+	p := &simplePDF{pdf: pdf}
 	p.newPage()
-	return p
+	return p, nil
+}
+
+func readReportPDFFont(name string) ([]byte, error) {
+	for _, dir := range []string{
+		filepath.Join("web", "static", "fonts"),
+		filepath.Join("..", "..", "web", "static", "fonts"),
+	} {
+		path := filepath.Join(dir, name)
+		b, err := os.ReadFile(path)
+		if err == nil {
+			return b, nil
+		}
+	}
+	return nil, fmt.Errorf("read report PDF font %s: file not found", name)
 }
 
 func (p *simplePDF) newPage() {
-	if p.buf.Len() > 0 {
-		p.pages = append(p.pages, p.buf.String())
-		p.buf.Reset()
-	}
+	p.pdf.AddPage()
 }
 
-func (p *simplePDF) finish() []byte {
-	if p.buf.Len() > 0 || len(p.pages) == 0 {
-		p.pages = append(p.pages, p.buf.String())
-		p.buf.Reset()
-	}
-
+func (p *simplePDF) finish() ([]byte, error) {
 	var out bytes.Buffer
-	_, _ = out.WriteString("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
-
-	objectCount := 4 + len(p.pages)*2
-	offsets := make([]int, objectCount+1)
-	writeObj := func(id int, body string) {
-		offsets[id] = out.Len()
-		_, _ = fmt.Fprintf(&out, "%d 0 obj\n%s\nendobj\n", id, body)
+	if err := p.pdf.Output(&out); err != nil {
+		return nil, err
 	}
+	return out.Bytes(), nil
+}
 
-	kids := make([]string, 0, len(p.pages))
-	for i := range p.pages {
-		kids = append(kids, fmt.Sprintf("%d 0 R", 5+i*2))
+func (p *simplePDF) y(y float64) float64 {
+	return pdfPageHeight - y
+}
+
+func (p *simplePDF) setTextColor(r, g, b float64) {
+	p.pdf.SetTextColor(pdfColor(r), pdfColor(g), pdfColor(b))
+}
+
+func (p *simplePDF) setDrawColor(r, g, b float64) {
+	p.pdf.SetDrawColor(pdfColor(r), pdfColor(g), pdfColor(b))
+}
+
+func (p *simplePDF) setFillColor(r, g, b float64) {
+	p.pdf.SetFillColor(pdfColor(r), pdfColor(g), pdfColor(b))
+}
+
+func pdfColor(v float64) int {
+	if v <= 1 {
+		v *= 255
 	}
-
-	writeObj(1, "<< /Type /Catalog /Pages 2 0 R >>")
-	writeObj(2, fmt.Sprintf("<< /Type /Pages /Kids [%s] /Count %d >>", strings.Join(kids, " "), len(p.pages)))
-	writeObj(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
-	writeObj(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
-
-	for i, stream := range p.pages {
-		pageID := 5 + i*2
-		contentID := pageID + 1
-		writeObj(pageID, fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>", pdfPageWidth, pdfPageHeight, contentID))
-		writeObj(contentID, fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream", len(stream), stream))
+	if v < 0 {
+		return 0
 	}
-
-	xref := out.Len()
-	_, _ = fmt.Fprintf(&out, "xref\n0 %d\n0000000000 65535 f \n", objectCount+1)
-	for i := 1; i <= objectCount; i++ {
-		_, _ = fmt.Fprintf(&out, "%010d 00000 n \n", offsets[i])
+	if v > 255 {
+		return 255
 	}
-	_, _ = fmt.Fprintf(&out, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", objectCount+1, xref)
-	return out.Bytes()
+	return int(v + 0.5)
 }
 
 func (p *simplePDF) text(x, y, size float64, value string) {
@@ -92,7 +119,9 @@ func (p *simplePDF) fontText(font string, x, y, size float64, value string) {
 
 func (p *simplePDF) colorFontText(font string, x, y, size float64, value string, r, g, b float64) {
 	value = sanitizePDFText(value)
-	_, _ = fmt.Fprintf(&p.buf, "%.3f %.3f %.3f rg BT /%s %.2f Tf %.2f %.2f Td (%s) Tj ET\n", r, g, b, font, size, x, y, escapePDFString(value))
+	p.setTextColor(r, g, b)
+	p.pdf.SetFont("Manrope", fontStyle(font), size)
+	p.pdf.Text(x, p.y(y), value)
 }
 
 func (p *simplePDF) centeredText(x, y, width, size float64, value string) {
@@ -105,22 +134,35 @@ func (p *simplePDF) centeredBoldText(x, y, width, size float64, value string) {
 
 func (p *simplePDF) centeredFontText(font string, x, y, width, size float64, value string) {
 	value = sanitizePDFText(value)
-	textWidth := float64(len(value)) * size * 0.48
+	textWidth := p.textWidth(font, size, value)
 	p.fontText(font, x+(width-textWidth)/2, y, size, value)
 }
 
 func (p *simplePDF) rightMutedText(x, y, width, size float64, value string) {
 	value = sanitizePDFText(value)
-	textWidth := float64(len(value)) * size * 0.48
+	textWidth := p.textWidth("F1", size, value)
 	p.colorFontText("F1", x+width-textWidth, y, size, value, 0.39, 0.45, 0.55)
 }
 
+func (p *simplePDF) textWidth(font string, size float64, value string) float64 {
+	p.pdf.SetFont("Manrope", fontStyle(font), size)
+	return p.pdf.GetStringWidth(sanitizePDFText(value))
+}
+
+func fontStyle(font string) string {
+	if font == "F2" {
+		return "B"
+	}
+	return ""
+}
+
 func (p *simplePDF) line(x1, y1, x2, y2 float64) {
-	_, _ = fmt.Fprintf(&p.buf, "0.55 0.60 0.68 RG %.2f %.2f m %.2f %.2f l S\n", x1, y1, x2, y2)
+	p.colorLine(x1, y1, x2, y2, 0.55, 0.60, 0.68)
 }
 
 func (p *simplePDF) colorLine(x1, y1, x2, y2 float64, r, g, b float64) {
-	_, _ = fmt.Fprintf(&p.buf, "%.3f %.3f %.3f RG %.2f %.2f m %.2f %.2f l S\n", r, g, b, x1, y1, x2, y2)
+	p.setDrawColor(r, g, b)
+	p.pdf.Line(x1, p.y(y1), x2, p.y(y2))
 }
 
 func (p *simplePDF) mutedLine(x1, y1, x2, y2 float64) {
@@ -128,17 +170,8 @@ func (p *simplePDF) mutedLine(x1, y1, x2, y2 float64) {
 }
 
 func (p *simplePDF) circle(x, y, radius float64, r, g, b float64) {
-	k := radius * 0.5522847498
-	_, _ = fmt.Fprintf(
-		&p.buf,
-		"%.3f %.3f %.3f RG %.2f %.2f m %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c S\n",
-		r, g, b,
-		x+radius, y,
-		x+radius, y+k, x+k, y+radius, x, y+radius,
-		x-k, y+radius, x-radius, y+k, x-radius, y,
-		x-radius, y-k, x-k, y-radius, x, y-radius,
-		x+k, y-radius, x+radius, y-k, x+radius, y,
-	)
+	p.setDrawColor(r, g, b)
+	p.pdf.Circle(x, p.y(y), radius, "D")
 }
 
 func (p *simplePDF) rect(x, y, w, h float64, r, g, b float64) {
@@ -146,7 +179,8 @@ func (p *simplePDF) rect(x, y, w, h float64, r, g, b float64) {
 		y += h
 		h = -h
 	}
-	_, _ = fmt.Fprintf(&p.buf, "%.3f %.3f %.3f rg %.2f %.2f %.2f %.2f re f\n", r, g, b, x, y, w, h)
+	p.setFillColor(r, g, b)
+	p.pdf.Rect(x, p.y(y+h), w, h, "F")
 }
 
 func (p *simplePDF) roundedRect(x, y, w, h, radius float64, r, g, b float64) {
@@ -160,21 +194,8 @@ func (p *simplePDF) roundedRect(x, y, w, h, radius float64, r, g, b float64) {
 	if radius > h/2 {
 		radius = h / 2
 	}
-	k := radius * 0.5522847498
-	_, _ = fmt.Fprintf(
-		&p.buf,
-		"%.3f %.3f %.3f rg %.2f %.2f m %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c f\n",
-		r, g, b,
-		x+radius, y,
-		x+w-radius, y,
-		x+w-radius+k, y, x+w, y+radius-k, x+w, y+radius,
-		x+w, y+h-radius,
-		x+w, y+h-radius+k, x+w-radius+k, y+h, x+w-radius, y+h,
-		x+radius, y+h,
-		x+radius-k, y+h, x, y+h-radius+k, x, y+h-radius,
-		x, y+radius,
-		x, y+radius-k, x+radius-k, y, x+radius, y,
-	)
+	p.setFillColor(r, g, b)
+	p.pdf.RoundedRect(x, p.y(y+h), w, h, radius, "1234", "F")
 }
 
 func (p *simplePDF) topRoundedRect(x, y, w, h, radius float64, r, g, b float64) {
@@ -188,26 +209,20 @@ func (p *simplePDF) topRoundedRect(x, y, w, h, radius float64, r, g, b float64) 
 	if radius > h {
 		radius = h
 	}
-	k := radius * 0.5522847498
-	_, _ = fmt.Fprintf(
-		&p.buf,
-		"%.3f %.3f %.3f rg %.2f %.2f m %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f l h f\n",
-		r, g, b,
-		x, y,
-		x, y+h-radius,
-		x, y+h-radius+k, x+radius-k, y+h, x+radius, y+h,
-		x+w-radius, y+h,
-		x+w-radius+k, y+h, x+w, y+h-radius+k, x+w, y+h-radius,
-		x+w, y,
-	)
+	p.setFillColor(r, g, b)
+	p.pdf.RoundedRectExt(x, p.y(y+h), w, h, radius, radius, 0, 0, "F")
 }
 
 func (p *simplePDF) strokeRect(x, y, w, h float64) {
-	_, _ = fmt.Fprintf(&p.buf, "0.82 0.85 0.89 RG %.2f %.2f %.2f %.2f re S\n", x, y, w, h)
+	p.setDrawColor(0.82, 0.85, 0.89)
+	p.pdf.Rect(x, p.y(y+h), w, h, "D")
 }
 
 func buildReportPDF(report reportData) ([]byte, error) {
-	p := newSimplePDF()
+	p, err := newSimplePDF()
+	if err != nil {
+		return nil, err
+	}
 	y := pdfPageHeight - pdfMargin
 
 	y = drawReportPDFHeader(p, report, y)
@@ -229,7 +244,7 @@ func buildReportPDF(report reportData) ([]byte, error) {
 	y -= 34
 	drawReportPDFMatrixTable(p, report.WeekLabel, report.MonthLabel, report.WeekDays, report.TaskRows, y)
 
-	return p.finish(), nil
+	return p.finish()
 }
 
 func drawReportPDFHeader(p *simplePDF, report reportData, y float64) float64 {

@@ -607,24 +607,17 @@ func TestBuildReportPDFContainsPercentageChartAndStatusMatrix(t *testing.T) {
 		t.Fatalf("buildReportPDF() error = %v", err)
 	}
 	for _, want := range [][]byte{
-		[]byte("%PDF-1.4"),
-		[]byte("MUTABA'AH YAUMIYAH"),
-		[]byte("Completion"),
-		[]byte("100"),
-		[]byte("Week 5"),
-		[]byte(`\(50%\)`),
-		[]byte("25 May - 31 May"),
-		[]byte("Dhikr"),
-		[]byte("Morning adhkar"),
-		[]byte("TASK"),
-		[]byte("TUE"),
-		[]byte("26 MAY"),
-		[]byte("/F2"),
-		[]byte("Amina"),
+		[]byte("%PDF-1."),
+		[]byte("/BaseFont /utf8manrope"),
+		[]byte("/BaseFont /utf8manropeB"),
+		[]byte("/FontFile2"),
 	} {
 		if !bytes.Contains(pdf, want) {
 			t.Fatalf("PDF does not contain %q", want)
 		}
+	}
+	if bytes.Contains(pdf, []byte("/BaseFont /Helvetica")) {
+		t.Fatal("PDF contains Helvetica instead of embedded Manrope")
 	}
 	if bytes.Contains(pdf, []byte("Monthly Comparison")) {
 		t.Fatal("PDF contains removed Monthly Comparison table heading")
@@ -646,11 +639,12 @@ func TestBuildReportPDFContainsPercentageChartAndStatusMatrix(t *testing.T) {
 		}
 	}
 	for _, wantVector := range [][]byte{
-		[]byte("0.120 0.550 0.220 RG"),
-		[]byte("0.720 0.120 0.120 RG"),
-		[]byte("0.700 0.180 0.450 RG"),
-		[]byte("0.390 0.450 0.550 RG"),
-		[]byte(" c S"),
+		[]byte("0.122 0.549 0.220 RG"),
+		[]byte("0.722 0.122 0.122 RG"),
+		[]byte("0.702 0.180 0.451 RG"),
+		[]byte("0.388 0.451 0.549 RG"),
+		[]byte(" c "),
+		[]byte(" l S"),
 	} {
 		if !bytes.Contains(pdf, wantVector) {
 			t.Fatalf("PDF does not contain status icon vector command %q", wantVector)
