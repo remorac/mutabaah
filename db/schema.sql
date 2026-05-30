@@ -60,12 +60,15 @@ CREATE TABLE menses_periods (
 CREATE TABLE sessions (
     id         CHAR(64)  NOT NULL,
     user_id    BIGINT    NOT NULL,
+    impersonator_user_id BIGINT NULL,
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_sessions_user (user_id),
+    KEY idx_sessions_impersonator (impersonator_user_id),
     KEY idx_sessions_expires (expires_at),
-    CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_sessions_impersonator_user FOREIGN KEY (impersonator_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE app_settings (

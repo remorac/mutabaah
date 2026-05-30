@@ -52,7 +52,7 @@ func (s *authTestStore) UpdateUserPassword(ctx context.Context, arg repository.U
 	return nil
 }
 
-func (s *authTestStore) DeleteUserSessions(ctx context.Context, userID int64) error {
+func (s *authTestStore) DeleteUserSessions(ctx context.Context, arg repository.DeleteUserSessionsParams) error {
 	return nil
 }
 

@@ -72,8 +72,8 @@ func (s *fakeResetStore) UpdateUserPassword(ctx context.Context, arg repository.
 	return nil
 }
 
-func (s *fakeResetStore) DeleteUserSessions(ctx context.Context, userID int64) error {
-	s.deletedFor = userID
+func (s *fakeResetStore) DeleteUserSessions(ctx context.Context, arg repository.DeleteUserSessionsParams) error {
+	s.deletedFor = arg.UserID
 	return nil
 }
 

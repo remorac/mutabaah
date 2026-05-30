@@ -23,11 +23,11 @@ type Querier interface {
 	DeleteSession(ctx context.Context, id string) error
 	DeleteTask(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
-	DeleteUserSessions(ctx context.Context, userID int64) error
+	DeleteUserSessions(ctx context.Context, arg DeleteUserSessionsParams) error
 	GetAppSettings(ctx context.Context) (AppSetting, error)
 	GetCompletion(ctx context.Context, arg GetCompletionParams) (TaskCompletion, error)
 	GetMensesPeriod(ctx context.Context, arg GetMensesPeriodParams) (MensesPeriod, error)
-	GetSession(ctx context.Context, id string) (Session, error)
+	GetSession(ctx context.Context, id string) (GetSessionRow, error)
 	GetTask(ctx context.Context, id int64) (Task, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)

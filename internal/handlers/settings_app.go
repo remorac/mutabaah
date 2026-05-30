@@ -56,7 +56,7 @@ func (h *SettingsAppHandler) Show(w http.ResponseWriter, r *http.Request) {
 		h.errs.ServerError(w, r, err)
 		return
 	}
-	view := h.view(current, token, settings, nil)
+	view := h.view(r, current, token, settings, nil)
 	view.FlashNotice = popFlash(w, r)
 	if err := h.tmpl.Render(w, "settings/app.html", view); err != nil {
 		h.errs.ServerError(w, r, err)
@@ -87,7 +87,7 @@ func (h *SettingsAppHandler) Update(w http.ResponseWriter, r *http.Request) {
 			fallback.WeekStartDay = parseWeekdayValue(input.WeekStartDay, fallback.WeekStartDay)
 			fallback.HistoryWeeks = parseIntValue(input.HistoryWeeks, fallback.HistoryWeeks)
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			if err := h.tmpl.Render(w, "settings/app.html", h.view(current, token, fallback, ve.Fields)); err != nil {
+			if err := h.tmpl.Render(w, "settings/app.html", h.view(r, current, token, fallback, ve.Fields)); err != nil {
 				h.errs.ServerError(w, r, err)
 			}
 			return
@@ -101,9 +101,9 @@ func (h *SettingsAppHandler) Update(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/settings/app", http.StatusSeeOther)
 }
 
-func (h *SettingsAppHandler) view(current repository.User, token string, settings services.AppSettings, errs map[string]string) appSettingsView {
+func (h *SettingsAppHandler) view(r *http.Request, current repository.User, token string, settings services.AppSettings, errs map[string]string) appSettingsView {
 	return appSettingsView{
-		BaseView:       NewBaseView(current, token, "App Settings — Settings"),
+		BaseView:       NewBaseViewForRequest(r, current, token, "App Settings — Settings"),
 		FormAction:     "/settings/app",
 		Errors:         errs,
 		WeekStartDay:   strconv.Itoa(int(settings.WeekStartDay)),

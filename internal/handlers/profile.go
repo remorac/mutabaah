@@ -77,7 +77,7 @@ func (h *ProfileHandler) Show(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.render(w, profileView{
-		BaseView: NewBaseView(user, token, "Profile — Settings"),
+		BaseView: NewBaseViewForRequest(r, user, token, "Profile — Settings"),
 		Email:    user.Email,
 		Periods:  rowsFromPeriods(periods),
 	}, http.StatusOK)
@@ -107,7 +107,7 @@ func (h *ProfileHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 			h.render(w, profileView{
-				BaseView: NewBaseView(user, token, "Profile — Settings"),
+				BaseView: NewBaseViewForRequest(r, user, token, "Profile — Settings"),
 				Email:    user.Email,
 				Errors:   ve.Fields,
 				Periods:  rowsFromPeriods(periods),
@@ -158,7 +158,7 @@ func (h *ProfileHandler) CreatePeriod(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			h.render(w, profileView{
-				BaseView:     NewBaseView(user, token, "Profile — Settings"),
+				BaseView:     NewBaseViewForRequest(r, user, token, "Profile — Settings"),
 				Email:        user.Email,
 				Periods:      rowsFromPeriods(periods),
 				PeriodErrors: ve.Fields,
@@ -313,7 +313,7 @@ func (h *ProfileHandler) renderUploadError(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	h.render(w, profileView{
-		BaseView: NewBaseView(user, token, "Profile — Settings"),
+		BaseView: NewBaseViewForRequest(r, user, token, "Profile — Settings"),
 		Email:    user.Email,
 		Errors:   map[string]string{"avatar": msg},
 		Periods:  rowsFromPeriods(periods),

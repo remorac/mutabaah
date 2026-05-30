@@ -123,10 +123,11 @@ type PasswordResetToken struct {
 }
 
 type Session struct {
-	ID        string    `json:"id"`
-	UserID    int64     `json:"user_id"`
-	ExpiresAt time.Time `json:"expires_at"`
-	CreatedAt time.Time `json:"created_at"`
+	ID                 string        `json:"id"`
+	UserID             int64         `json:"user_id"`
+	ExpiresAt          time.Time     `json:"expires_at"`
+	CreatedAt          time.Time     `json:"created_at"`
+	ImpersonatorUserID sql.NullInt64 `json:"impersonator_user_id"`
 }
 
 type Task struct {

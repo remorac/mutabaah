@@ -22,15 +22,29 @@
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Email</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Role</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Joined</th>
-          <th class="w-16"></th>
         </tr>
       </thead>
       <tbody>
         {{range .Rows}}
         <tr class="group border-b border-base-100 hover:bg-base-200/40 transition-colors">
           <td class="font-medium">
-            {{.Name}}
-            {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1">you</span>{{end}}
+            <a href="{{.DetailURL}}" class="flex items-center gap-3 hover:underline">
+              {{if .AvatarPath}}
+              <span class="avatar">
+                <span class="h-10 w-10 overflow-hidden rounded-full">
+                  <img src="{{.AvatarPath}}" alt="{{.Name}}" loading="lazy" class="h-full w-full rounded-full object-cover" />
+                </span>
+              </span>
+              {{else}}
+              <span class="h-10 w-10 shrink-0 rounded-full bg-accent/10 text-accent grid place-items-center">
+                <i data-lucide="user" class="h-5 w-5"></i>
+              </span>
+              {{end}}
+              <span class="min-w-0">
+                <span class="break-words">{{.Name}}</span>
+                {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1">you</span>{{end}}
+              </span>
+            </a>
           </td>
           <td>{{.Email}}</td>
           <td>
@@ -41,14 +55,6 @@
             {{end}}
           </td>
           <td class="text-xs opacity-70">{{.CreatedAt}}</td>
-          <td class="text-right whitespace-nowrap">
-            <label for="user-reset-modal-{{.ID}}" class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100 transition-opacity" title="Reset data">
-              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-            </label>
-            <a href="/settings/users/{{.ID}}/edit" class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100 transition-opacity" title="Edit">
-              <i data-lucide="pencil" class="w-4 h-4"></i>
-            </a>
-          </td>
         </tr>
         {{end}}
       </tbody>
@@ -57,14 +63,27 @@
 
   <div class="space-y-3 md:hidden">
     {{range .Rows}}
-    <div class="rounded-xl border border-base-300/60 bg-base-100 p-4 shadow-sm">
+    <a href="{{.DetailURL}}" class="block rounded-xl border border-base-300/60 bg-base-100 p-4 shadow-sm transition-colors hover:bg-base-200/40">
       <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <h2 class="break-words text-base font-bold leading-snug">
-            {{.Name}}
-            {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1 align-middle">you</span>{{end}}
-          </h2>
-          <p class="mt-1 break-words text-sm opacity-70">{{.Email}}</p>
+        <div class="flex min-w-0 items-start gap-3">
+          {{if .AvatarPath}}
+          <span class="avatar shrink-0">
+            <span class="h-11 w-11 overflow-hidden rounded-full">
+              <img src="{{.AvatarPath}}" alt="{{.Name}}" loading="lazy" class="h-full w-full rounded-full object-cover" />
+            </span>
+          </span>
+          {{else}}
+          <span class="h-11 w-11 shrink-0 rounded-full bg-accent/10 text-accent grid place-items-center">
+            <i data-lucide="user" class="h-5 w-5"></i>
+          </span>
+          {{end}}
+          <div class="min-w-0">
+            <h2 class="break-words text-base font-bold leading-snug">
+              {{.Name}}
+              {{if .IsSelf}}<span class="badge badge-info badge-sm ml-1 align-middle">you</span>{{end}}
+            </h2>
+            <p class="mt-1 break-words text-sm opacity-70">{{.Email}}</p>
+          </div>
         </div>
         <div class="shrink-0">
           {{if eq .Role "admin"}}
@@ -79,57 +98,9 @@
         <i data-lucide="calendar-plus" class="h-4 w-4 shrink-0"></i>
         <span class="min-w-0 break-words">{{.CreatedAt}}</span>
       </div>
-
-      <div class="mt-4 flex justify-end gap-2">
-        <label for="user-reset-modal-{{.ID}}" class="btn btn-ghost btn-xs">
-          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-          Reset
-        </label>
-        <a href="/settings/users/{{.ID}}/edit" class="btn btn-ghost btn-xs">
-          <i data-lucide="pencil" class="w-4 h-4"></i>
-          Edit
-        </a>
-      </div>
-    </div>
+    </a>
     {{end}}
   </div>
-
-  {{$dates := .ResetDates}}
-  {{$csrf := .CSRFToken}}
-  {{range .Rows}}
-  <input type="checkbox" id="user-reset-modal-{{.ID}}" class="modal-toggle" />
-  <div class="modal" role="dialog" aria-modal="true">
-    <div class="modal-box">
-      <h3 class="font-semibold text-lg">Reset task completions</h3>
-      <p class="py-3 text-sm opacity-80">
-        Select the dates to clear for <span class="font-medium">{{.Name}}</span>. Completions on the chosen dates will be permanently removed.
-      </p>
-      <form method="POST" action="{{.ResetURL}}">
-        <input type="hidden" name="_csrf" value="{{$csrf}}" />
-        {{if $dates}}
-        <div class="flex flex-col gap-1">
-          {{range $dates}}
-          <label class="label cursor-pointer justify-start gap-3">
-            <input type="checkbox" name="dates" value="{{.Value}}" class="checkbox checkbox-sm checkbox-error" />
-            <span class="label-text">{{.Label}}</span>
-          </label>
-          {{end}}
-        </div>
-        {{else}}
-        <p class="text-sm opacity-60">No dates available.</p>
-        {{end}}
-        <div class="modal-action">
-          <label for="user-reset-modal-{{.ID}}" class="btn btn-ghost btn-sm">Cancel</label>
-          <button type="submit" class="btn btn-warning btn-sm"{{if not $dates}} disabled{{end}}>
-            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-            Reset
-          </button>
-        </div>
-      </form>
-    </div>
-    <label class="modal-backdrop" for="user-reset-modal-{{.ID}}">Close</label>
-  </div>
-  {{end}}
   {{else}}
   <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body items-center text-center py-10">

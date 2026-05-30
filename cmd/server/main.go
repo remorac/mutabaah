@@ -88,7 +88,7 @@ func main() {
 	reportHandler := handlers.NewReportHandler(auth, tasks, userAdmin, appSettings, tmpl, errorPages, logger)
 	settingsAppHandler := handlers.NewSettingsAppHandler(auth, appSettings, tmpl, errorPages, logger)
 	settingsTasksHandler := handlers.NewSettingsTasksHandler(auth, taskAdmin, tmpl, errorPages, logger)
-	settingsUsersHandler := handlers.NewSettingsUsersHandler(auth, userAdmin, appSettings, tmpl, errorPages, logger)
+	settingsUsersHandler := handlers.NewSettingsUsersHandler(auth, userAdmin, mensesAdmin, appSettings, tmpl, errorPages, logger)
 	profileHandler := handlers.NewProfileHandler(auth, userAdmin, mensesAdmin, tmpl, errorPages, logger, cfg.AvatarDir)
 
 	// Wire styled 403 into RequireAdmin (middleware can't import handlers).
@@ -136,6 +136,7 @@ func main() {
 		r.Post("/settings/profile/picture", profileHandler.UploadPicture)
 		r.Post("/settings/periods", profileHandler.CreatePeriod)
 		r.Post("/settings/periods/{id}/delete", profileHandler.DeletePeriod)
+		r.Post("/impersonation/stop", authHandler.StopImpersonation)
 	})
 
 	r.Group(func(r chi.Router) {
@@ -155,9 +156,11 @@ func main() {
 		r.Get("/settings/users", settingsUsersHandler.List)
 		r.Get("/settings/users/new", settingsUsersHandler.NewForm)
 		r.Post("/settings/users", settingsUsersHandler.Create)
+		r.Get("/settings/users/{id}", settingsUsersHandler.Show)
 		r.Get("/settings/users/{id}/edit", settingsUsersHandler.EditForm)
 		r.Post("/settings/users/{id}", settingsUsersHandler.Update)
 		r.Post("/settings/users/{id}/delete", settingsUsersHandler.Delete)
+		r.Post("/settings/users/{id}/impersonate", authHandler.StartImpersonation)
 		r.Post("/settings/users/{id}/reset-data", settingsUsersHandler.ResetData)
 	})
 

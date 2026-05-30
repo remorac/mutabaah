@@ -17,6 +17,7 @@ type ctxKey int
 const (
 	ctxKeyUser ctxKey = iota
 	ctxKeySessionID
+	ctxKeyImpersonator
 )
 
 // UserFromContext returns the authenticated user attached to ctx, if any.
@@ -33,6 +34,13 @@ func SessionIDFromContext(ctx context.Context) string {
 	return ""
 }
 
+// ImpersonatorFromContext returns the original admin attached to ctx when the
+// active session is impersonating another user.
+func ImpersonatorFromContext(ctx context.Context) (repository.User, bool) {
+	u, ok := ctx.Value(ctxKeyImpersonator).(repository.User)
+	return u, ok
+}
+
 // LoadUser inspects the session cookie and, on success, attaches the user
 // and session id to the request context. Invalid/expired cookies are
 // transparently cleared so the client stops sending them.
@@ -44,7 +52,7 @@ func LoadUser(auth *services.AuthService) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			user, err := auth.LookupSession(r.Context(), cookie.Value)
+			info, err := auth.LookupSessionInfo(r.Context(), cookie.Value)
 			if err != nil {
 				if errors.Is(err, services.ErrSessionNotFound) {
 					clearSessionCookie(w)
@@ -54,8 +62,11 @@ func LoadUser(auth *services.AuthService) func(http.Handler) http.Handler {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
-			ctx := context.WithValue(r.Context(), ctxKeyUser, user)
+			ctx := context.WithValue(r.Context(), ctxKeyUser, info.User)
 			ctx = context.WithValue(ctx, ctxKeySessionID, cookie.Value)
+			if info.Impersonating {
+				ctx = context.WithValue(ctx, ctxKeyImpersonator, info.Impersonator)
+			}
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

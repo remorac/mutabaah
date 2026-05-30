@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,28 +21,47 @@ import (
 // this handler must be wrapped with RequireAdmin.
 type SettingsUsersHandler struct {
 	auth     *services.AuthService
-	users    *services.UserAdminService
-	settings *services.AppSettingsService
+	users    settingsUserService
+	menses   settingsMensesService
+	settings settingsGetter
 	tmpl     *Templates
 	errs     *ErrorPages
 	logger   *slog.Logger
 }
 
-func NewSettingsUsersHandler(auth *services.AuthService, users *services.UserAdminService, settings *services.AppSettingsService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *SettingsUsersHandler {
-	return &SettingsUsersHandler{auth: auth, users: users, settings: settings, tmpl: tmpl, errs: errs, logger: logger}
+type settingsUserService interface {
+	List(ctx context.Context, limit, offset int32) ([]repository.User, int64, error)
+	Get(ctx context.Context, id int64) (repository.User, error)
+	Create(ctx context.Context, in services.UserInput) (int64, error)
+	Update(ctx context.Context, id int64, in services.UserInput) error
+	Delete(ctx context.Context, id int64) error
+	ResetCompletions(ctx context.Context, userID int64, dates, allowedDates []time.Time) error
+}
+
+type settingsMensesService interface {
+	List(ctx context.Context, userID int64) ([]repository.MensesPeriod, error)
+}
+
+type settingsGetter interface {
+	Get(ctx context.Context) (services.AppSettings, error)
+}
+
+func NewSettingsUsersHandler(auth *services.AuthService, users *services.UserAdminService, menses *services.MensesAdminService, settings *services.AppSettingsService, tmpl *Templates, errs *ErrorPages, logger *slog.Logger) *SettingsUsersHandler {
+	return &SettingsUsersHandler{auth: auth, users: users, menses: menses, settings: settings, tmpl: tmpl, errs: errs, logger: logger}
 }
 
 // usersPageSize matches the spec's "paginated if >50" threshold.
 const usersPageSize = 50
 
 type userListRow struct {
-	ID        int64
-	Email     string
-	Name      string
-	Role      string
-	CreatedAt string
-	IsSelf    bool
-	ResetURL  string
+	ID         int64
+	Email      string
+	Name       string
+	Role       string
+	CreatedAt  string
+	IsSelf     bool
+	DetailURL  string
+	AvatarPath string
 }
 
 type resetDateOption struct {
@@ -57,7 +79,23 @@ type userListView struct {
 	HasNext    bool
 	PrevURL    string
 	NextURL    string
-	ResetDates []resetDateOption
+}
+
+type userDetailView struct {
+	BaseView
+	ID             int64
+	Email          string
+	Name           string
+	Role           string
+	CreatedAt      string
+	IsSelf         bool
+	AvatarPath     string
+	EditURL        string
+	ResetURL       string
+	ImpersonateURL string
+	CanImpersonate bool
+	ResetDates     []resetDateOption
+	Periods        []periodRow
 }
 
 type userFormView struct {
@@ -93,31 +131,17 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 		h.errs.ServerError(w, r, err)
 		return
 	}
-	settings, err := h.settings.Get(r.Context())
-	if err != nil {
-		h.errs.ServerError(w, r, err)
-		return
-	}
-
 	rows := make([]userListRow, 0, len(users))
 	for _, u := range users {
 		rows = append(rows, userListRow{
-			ID:        u.ID,
-			Email:     u.Email,
-			Name:      u.Name,
-			Role:      string(u.Role),
-			CreatedAt: u.CreatedAt.Format("2006-01-02"),
-			IsSelf:    u.ID == current.ID,
-			ResetURL:  "/settings/users/" + strconv.FormatInt(u.ID, 10) + "/reset-data",
-		})
-	}
-
-	weekDates := services.WeekDatesForHistory(time.Now(), settings.WeekStartDay, settings.HistoryWeeks, true)
-	resetDates := make([]resetDateOption, 0, len(weekDates))
-	for _, d := range weekDates {
-		resetDates = append(resetDates, resetDateOption{
-			Value: d.Format("2006-01-02"),
-			Label: d.Format("Mon, Jan 2"),
+			ID:         u.ID,
+			Email:      u.Email,
+			Name:       u.Name,
+			Role:       string(u.Role),
+			CreatedAt:  u.CreatedAt.Format("2006-01-02"),
+			IsSelf:     u.ID == current.ID,
+			DetailURL:  "/settings/users/" + strconv.FormatInt(u.ID, 10),
+			AvatarPath: avatarURL(u),
 		})
 	}
 
@@ -127,7 +151,7 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := userListView{
-		BaseView:   NewBaseView(current, token, "Users — Settings"),
+		BaseView:   NewBaseViewForRequest(r, current, token, "Users — Settings"),
 		Rows:       rows,
 		Page:       page,
 		TotalPages: totalPages,
@@ -136,11 +160,66 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 		HasNext:    page < totalPages,
 		PrevURL:    "/settings/users?page=" + strconv.Itoa(page-1),
 		NextURL:    "/settings/users?page=" + strconv.Itoa(page+1),
-		ResetDates: resetDates,
 	}
 	view.FlashNotice = popFlash(w, r)
 	if err := h.tmpl.Render(w, "settings/users/index.html", view); err != nil {
 		h.logger.Error("render users list", "err", err)
+		http.Error(w, "render error", http.StatusInternalServerError)
+	}
+}
+
+// Show renders the admin user detail page.
+func (h *SettingsUsersHandler) Show(w http.ResponseWriter, r *http.Request) {
+	current, _ := apmw.UserFromContext(r.Context())
+	sid := apmw.SessionIDFromContext(r.Context())
+	token := h.auth.CSRFToken(sid)
+
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	u, err := h.users.Get(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, services.ErrUserNotFound) {
+			h.errs.NotFound(w, r)
+			return
+		}
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	periods, err := h.menses.List(r.Context(), u.ID)
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	settings, err := h.settings.Get(r.Context())
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
+
+	idStr := strconv.FormatInt(u.ID, 10)
+	base := NewBaseViewForRequest(r, current, token, u.Name+" — Users")
+	view := userDetailView{
+		BaseView:       base,
+		ID:             u.ID,
+		Email:          u.Email,
+		Name:           u.Name,
+		Role:           string(u.Role),
+		CreatedAt:      u.CreatedAt.Format("2006-01-02"),
+		IsSelf:         u.ID == current.ID,
+		AvatarPath:     avatarURL(u),
+		EditURL:        "/settings/users/" + idStr + "/edit",
+		ResetURL:       "/settings/users/" + idStr + "/reset-data",
+		ImpersonateURL: "/settings/users/" + idStr + "/impersonate",
+		CanImpersonate: u.ID != current.ID && !base.IsImpersonating,
+		ResetDates:     resetDateOptions(settings),
+		Periods:        rowsFromPeriods(periods),
+	}
+	view.FlashNotice = popFlash(w, r)
+	if err := h.tmpl.Render(w, "settings/users/show.html", view); err != nil {
+		h.logger.Error("render user detail", "err", err)
 		http.Error(w, "render error", http.StatusInternalServerError)
 	}
 }
@@ -152,7 +231,7 @@ func (h *SettingsUsersHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 	token := h.auth.CSRFToken(sid)
 
 	view := userFormView{
-		BaseView:   NewBaseView(current, token, "New User — Settings"),
+		BaseView:   NewBaseViewForRequest(r, current, token, "New User — Settings"),
 		IsNew:      true,
 		FormAction: "/settings/users",
 		Role:       string(repository.UsersRoleUser),
@@ -180,7 +259,7 @@ func (h *SettingsUsersHandler) Create(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			h.renderFormError(w, userFormView{
-				BaseView:   NewBaseView(current, token, "New User — Settings"),
+				BaseView:   NewBaseViewForRequest(r, current, token, "New User — Settings"),
 				IsNew:      true,
 				FormAction: "/settings/users",
 				Errors:     ve.Fields,
@@ -221,7 +300,7 @@ func (h *SettingsUsersHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 
 	isSelf := u.ID == current.ID
 	view := userFormView{
-		BaseView:   NewBaseView(current, token, "Edit User — Settings"),
+		BaseView:   NewBaseViewForRequest(r, current, token, "Edit User — Settings"),
 		IsNew:      false,
 		FormAction: "/settings/users/" + strconv.FormatInt(id, 10),
 		DeleteURL:  "/settings/users/" + strconv.FormatInt(id, 10) + "/delete",
@@ -258,7 +337,7 @@ func (h *SettingsUsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			h.renderFormError(w, userFormView{
-				BaseView:   NewBaseView(current, token, "Edit User — Settings"),
+				BaseView:   NewBaseViewForRequest(r, current, token, "Edit User — Settings"),
 				IsNew:      false,
 				FormAction: "/settings/users/" + strconv.FormatInt(id, 10),
 				DeleteURL:  "/settings/users/" + strconv.FormatInt(id, 10) + "/delete",
@@ -278,7 +357,7 @@ func (h *SettingsUsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, services.ErrLastAdmin) {
 			h.renderFormError(w, userFormView{
-				BaseView:     NewBaseView(current, token, "Edit User — Settings"),
+				BaseView:     NewBaseViewForRequest(r, current, token, "Edit User — Settings"),
 				IsNew:        false,
 				FormAction:   "/settings/users/" + strconv.FormatInt(id, 10),
 				DeleteURL:    "/settings/users/" + strconv.FormatInt(id, 10) + "/delete",
@@ -379,7 +458,28 @@ func (h *SettingsUsersHandler) ResetData(w http.ResponseWriter, r *http.Request)
 	} else {
 		setFlash(w, "Task completions reset.")
 	}
-	http.Redirect(w, r, "/settings/users", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/users/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+}
+
+func resetDateOptions(settings services.AppSettings) []resetDateOption {
+	weekDates := services.WeekDatesForHistory(time.Now(), settings.WeekStartDay, settings.HistoryWeeks, true)
+	resetDates := make([]resetDateOption, 0, len(weekDates))
+	for _, d := range weekDates {
+		resetDates = append(resetDates, resetDateOption{
+			Value: d.Format("2006-01-02"),
+			Label: d.Format("Mon, Jan 2"),
+		})
+	}
+	return resetDates
+}
+
+func avatarURL(user repository.User) string {
+	if !user.AvatarPath.Valid || user.AvatarPath.String == "" {
+		return ""
+	}
+	name := user.AvatarPath.String
+	base := strings.TrimSuffix(name, filepath.Ext(name))
+	return "/static/avatars/thumb_" + base + ".jpg"
 }
 
 func (h *SettingsUsersHandler) renderFormError(w http.ResponseWriter, view userFormView) {

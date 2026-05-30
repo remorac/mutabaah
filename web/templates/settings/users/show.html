@@ -1,0 +1,133 @@
+{{define "content"}}
+<div class="max-w-3xl flex flex-col gap-6">
+
+  <div class="flex items-center gap-2 text-sm opacity-60">
+    <a href="/settings/users" class="hover:opacity-100 hover:underline transition-opacity">Users</a>
+    <i data-lucide="chevron-right" class="w-3 h-3"></i>
+    <span class="font-medium opacity-100">{{.Name}}</span>
+  </div>
+
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <h1 class="text-2xl font-semibold flex items-center gap-2">
+      <i data-lucide="user-round" class="w-6 h-6 text-primary"></i>
+      User detail
+    </h1>
+    <div class="flex flex-wrap gap-2">
+      {{if .CanImpersonate}}
+      <form method="POST" action="{{.ImpersonateURL}}">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+        <button type="submit" class="btn btn-ghost btn-sm">
+          <i data-lucide="user-round-check" class="w-4 h-4"></i>
+          Impersonate
+        </button>
+      </form>
+      {{end}}
+      <label for="user-reset-modal-{{.ID}}" class="btn btn-ghost btn-sm">
+        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+        Reset
+      </label>
+      <a href="{{.EditURL}}" class="btn btn-primary btn-sm shadow-sm">
+        <i data-lucide="pencil" class="w-4 h-4"></i>
+        Edit
+      </a>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="card-body flex flex-col gap-5 sm:flex-row sm:items-center">
+      {{if .AvatarPath}}
+      <span class="avatar shrink-0">
+        <span class="h-20 w-20 overflow-hidden rounded-full">
+          <img src="{{.AvatarPath}}" alt="{{.Name}}" loading="lazy" class="h-full w-full rounded-full object-cover" />
+        </span>
+      </span>
+      {{else}}
+      <span class="h-20 w-20 shrink-0 rounded-full bg-accent/10 text-accent grid place-items-center">
+        <i data-lucide="user" class="h-9 w-9"></i>
+      </span>
+      {{end}}
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="break-words text-xl font-bold">{{.Name}}</h2>
+          {{if .IsSelf}}<span class="badge badge-info badge-sm">you</span>{{end}}
+          {{if eq .Role "admin"}}
+            <span class="badge badge-primary badge-sm">admin</span>
+          {{else}}
+            <span class="badge badge-ghost badge-sm">user</span>
+          {{end}}
+        </div>
+        <p class="mt-1 break-words text-sm opacity-70">{{.Email}}</p>
+        <div class="mt-3 flex items-center gap-2 text-xs opacity-70">
+          <i data-lucide="calendar-plus" class="h-4 w-4 shrink-0"></i>
+          <span>Joined {{.CreatedAt}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="card-body flex flex-col gap-5">
+      <div>
+        <h2 class="text-lg font-bold flex items-center gap-2">
+          <i data-lucide="moon" class="w-5 h-5 text-pink-500"></i>
+          Period
+        </h2>
+      </div>
+
+      {{if .Periods}}
+      <ul class="flex flex-col border-t border-base-200">
+        {{range .Periods}}
+        <li class="flex items-center gap-3 py-3 border-b border-base-200 last:border-b-0">
+          <span class="shrink-0 w-8 h-8 rounded-lg bg-pink-100 text-pink-500 grid place-items-center">
+            <i data-lucide="moon" class="w-4 h-4"></i>
+          </span>
+          <div class="min-w-0">
+            <div class="font-medium text-sm">
+              {{.StartDate}} &mdash; {{if .Ongoing}}<span class="badge badge-sm bg-pink-100 text-pink-700 border-pink-200 font-normal">ongoing</span>{{else}}{{.EndDate}}{{end}}
+            </div>
+          </div>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="text-sm opacity-60">No periods recorded yet.</p>
+      {{end}}
+    </div>
+  </div>
+
+  <input type="checkbox" id="user-reset-modal-{{.ID}}" class="modal-toggle" />
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 class="font-semibold text-lg">Reset task completions</h3>
+      <p class="py-3 text-sm opacity-80">
+        Select the dates to clear for <span class="font-medium">{{.Name}}</span>. Completions on the chosen dates will be permanently removed.
+      </p>
+      <form method="POST" action="{{.ResetURL}}">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+        {{if .ResetDates}}
+        <div class="flex flex-col gap-1">
+          {{range .ResetDates}}
+          <label class="label cursor-pointer justify-start gap-3">
+            <input type="checkbox" name="dates" value="{{.Value}}" class="checkbox checkbox-sm checkbox-error" />
+            <span class="label-text">{{.Label}}</span>
+          </label>
+          {{end}}
+        </div>
+        {{else}}
+        <p class="text-sm opacity-60">No dates available.</p>
+        {{end}}
+        <div class="modal-action">
+          <label for="user-reset-modal-{{.ID}}" class="btn btn-ghost btn-sm">Cancel</label>
+          <button type="submit" class="btn btn-warning btn-sm"{{if not .ResetDates}} disabled{{end}}>
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            Reset
+          </button>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="user-reset-modal-{{.ID}}">Close</label>
+  </div>
+
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}

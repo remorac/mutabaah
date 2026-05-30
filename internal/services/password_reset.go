@@ -25,7 +25,7 @@ type passwordResetStore interface {
 	GetValidPasswordResetToken(ctx context.Context, tokenHash string) (repository.PasswordResetToken, error)
 	MarkPasswordResetTokenUsed(ctx context.Context, tokenHash string) (int64, error)
 	UpdateUserPassword(ctx context.Context, arg repository.UpdateUserPasswordParams) error
-	DeleteUserSessions(ctx context.Context, userID int64) error
+	DeleteUserSessions(ctx context.Context, arg repository.DeleteUserSessionsParams) error
 	DeleteExpiredPasswordResetTokens(ctx context.Context) error
 }
 
@@ -123,7 +123,10 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, token, next, c
 	}); err != nil {
 		return err
 	}
-	if err := s.q.DeleteUserSessions(ctx, reset.UserID); err != nil {
+	if err := s.q.DeleteUserSessions(ctx, repository.DeleteUserSessionsParams{
+		UserID:             reset.UserID,
+		ImpersonatorUserID: sql.NullInt64{Int64: reset.UserID, Valid: true},
+	}); err != nil {
 		return err
 	}
 	return s.q.DeleteExpiredPasswordResetTokens(ctx)

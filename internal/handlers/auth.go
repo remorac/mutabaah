@@ -4,7 +4,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 
 	apmw "github.com/remorac/mutabaah/internal/middleware"
 	"github.com/remorac/mutabaah/internal/services"
@@ -76,15 +79,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     apmw.SessionCookieName,
-		Value:    token,
-		Path:     "/",
-		MaxAge:   int(h.auth.SessionLifetime().Seconds()),
-		HttpOnly: true,
-		Secure:   h.secureCookies,
-		SameSite: http.SameSiteLaxMode,
-	})
+	h.setSessionCookie(w, token)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -173,6 +168,85 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 			h.logger.Warn("logout cleanup", "err", err)
 		}
 	}
+	h.clearSessionCookie(w)
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+// StartImpersonation rotates the current admin session into the selected user.
+func (h *AuthHandler) StartImpersonation(w http.ResponseWriter, r *http.Request) {
+	current, ok := apmw.UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	if _, ok := apmw.ImpersonatorFromContext(r.Context()); ok {
+		http.Error(w, "already impersonating", http.StatusForbidden)
+		return
+	}
+	targetID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	token, target, err := h.auth.StartImpersonation(r.Context(), apmw.SessionIDFromContext(r.Context()), current, targetID)
+	if err != nil {
+		if errors.Is(err, services.ErrSelfImpersonation) {
+			http.Error(w, "cannot impersonate yourself", http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, services.ErrImpersonationForbidden) {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, services.ErrSessionNotFound) || errors.Is(err, services.ErrUserNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		h.logger.Error("start impersonation", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	h.logger.Info("impersonation started", "admin_id", current.ID, "target_id", target.ID)
+	h.setSessionCookie(w, token)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// StopImpersonation rotates an impersonated session back to the original admin.
+func (h *AuthHandler) StopImpersonation(w http.ResponseWriter, r *http.Request) {
+	sid := apmw.SessionIDFromContext(r.Context())
+	token, admin, err := h.auth.StopImpersonation(r.Context(), sid)
+	if err != nil {
+		if errors.Is(err, services.ErrNotImpersonating) {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+		if errors.Is(err, services.ErrSessionNotFound) || errors.Is(err, services.ErrImpersonatorInvalid) {
+			h.clearSessionCookie(w)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		h.logger.Error("stop impersonation", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	h.logger.Info("impersonation stopped", "admin_id", admin.ID)
+	h.setSessionCookie(w, token)
+	http.Redirect(w, r, "/settings/users", http.StatusSeeOther)
+}
+
+func (h *AuthHandler) setSessionCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     apmw.SessionCookieName,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(h.auth.SessionLifetime().Seconds()),
+		HttpOnly: true,
+		Secure:   h.secureCookies,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func (h *AuthHandler) clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     apmw.SessionCookieName,
 		Value:    "",
@@ -182,7 +256,6 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Secure:   h.secureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func (h *AuthHandler) renderLogin(w http.ResponseWriter, data loginViewData) {

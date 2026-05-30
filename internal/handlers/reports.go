@@ -147,7 +147,7 @@ func (h *ReportHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view := reportPageView{
-		BaseView:          NewBaseView(current, token, "Report — Mutaba'ah Yaumiyah"),
+		BaseView:          NewBaseViewForRequest(r, current, token, "Report — Mutaba'ah Yaumiyah"),
 		WeekValue:         report.WeekValue,
 		WeekDateValue:     report.WeekDateValue,
 		WeekDateMin:       report.WeekDateMin,

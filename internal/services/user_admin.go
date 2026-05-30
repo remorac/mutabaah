@@ -148,7 +148,10 @@ func (s *UserAdminService) Update(ctx context.Context, id int64, in UserInput) e
 			return err
 		}
 		// Force re-login on password change so any leaked session is revoked.
-		if err := s.q.DeleteUserSessions(ctx, id); err != nil {
+		if err := s.q.DeleteUserSessions(ctx, repository.DeleteUserSessionsParams{
+			UserID:             id,
+			ImpersonatorUserID: sql.NullInt64{Int64: id, Valid: true},
+		}); err != nil {
 			return err
 		}
 	}
@@ -250,7 +253,10 @@ func (s *UserAdminService) ChangePassword(ctx context.Context, userID int64, nex
 	}); err != nil {
 		return err
 	}
-	return s.q.DeleteUserSessions(ctx, userID)
+	return s.q.DeleteUserSessions(ctx, repository.DeleteUserSessionsParams{
+		UserID:             userID,
+		ImpersonatorUserID: sql.NullInt64{Int64: userID, Valid: true},
+	})
 }
 
 // validateProfile checks email/name/role and enforces email uniqueness against

@@ -7,22 +7,29 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
 const createSession = `-- name: CreateSession :exec
-INSERT INTO sessions (id, user_id, expires_at)
-VALUES (?, ?, ?)
+INSERT INTO sessions (id, user_id, impersonator_user_id, expires_at)
+VALUES (?, ?, ?, ?)
 `
 
 type CreateSessionParams struct {
-	ID        string    `json:"id"`
-	UserID    int64     `json:"user_id"`
-	ExpiresAt time.Time `json:"expires_at"`
+	ID                 string        `json:"id"`
+	UserID             int64         `json:"user_id"`
+	ImpersonatorUserID sql.NullInt64 `json:"impersonator_user_id"`
+	ExpiresAt          time.Time     `json:"expires_at"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) error {
-	_, err := q.db.ExecContext(ctx, createSession, arg.ID, arg.UserID, arg.ExpiresAt)
+	_, err := q.db.ExecContext(ctx, createSession,
+		arg.ID,
+		arg.UserID,
+		arg.ImpersonatorUserID,
+		arg.ExpiresAt,
+	)
 	return err
 }
 
@@ -45,26 +52,41 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 }
 
 const deleteUserSessions = `-- name: DeleteUserSessions :exec
-DELETE FROM sessions WHERE user_id = ?
+DELETE FROM sessions
+WHERE user_id = ? OR impersonator_user_id = ?
 `
 
-func (q *Queries) DeleteUserSessions(ctx context.Context, userID int64) error {
-	_, err := q.db.ExecContext(ctx, deleteUserSessions, userID)
+type DeleteUserSessionsParams struct {
+	UserID             int64         `json:"user_id"`
+	ImpersonatorUserID sql.NullInt64 `json:"impersonator_user_id"`
+}
+
+func (q *Queries) DeleteUserSessions(ctx context.Context, arg DeleteUserSessionsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteUserSessions, arg.UserID, arg.ImpersonatorUserID)
 	return err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, user_id, expires_at, created_at
+SELECT id, user_id, impersonator_user_id, expires_at, created_at
 FROM sessions
 WHERE id = ? AND expires_at > CURRENT_TIMESTAMP
 `
 
-func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
+type GetSessionRow struct {
+	ID                 string        `json:"id"`
+	UserID             int64         `json:"user_id"`
+	ImpersonatorUserID sql.NullInt64 `json:"impersonator_user_id"`
+	ExpiresAt          time.Time     `json:"expires_at"`
+	CreatedAt          time.Time     `json:"created_at"`
+}
+
+func (q *Queries) GetSession(ctx context.Context, id string) (GetSessionRow, error) {
 	row := q.db.QueryRowContext(ctx, getSession, id)
-	var i Session
+	var i GetSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
+		&i.ImpersonatorUserID,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 	)

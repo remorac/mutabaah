@@ -101,7 +101,7 @@ func (h *SettingsTasksHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := taskListView{
-		BaseView: NewBaseView(user, token, "Tasks — Settings"),
+		BaseView: NewBaseViewForRequest(r, user, token, "Tasks — Settings"),
 		Rows:     rows,
 	}
 	if err := h.tmpl.Render(w, "settings/tasks/index.html", view); err != nil {
@@ -117,7 +117,7 @@ func (h *SettingsTasksHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 	token := h.auth.CSRFToken(sid)
 
 	view := taskFormView{
-		BaseView:    NewBaseView(user, token, "New Task — Settings"),
+		BaseView:    NewBaseViewForRequest(r, user, token, "New Task — Settings"),
 		IsNew:       true,
 		FormAction:  "/settings/tasks",
 		Active:      true,
@@ -146,7 +146,7 @@ func (h *SettingsTasksHandler) Create(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			h.renderFormError(w, r, taskFormView{
-				BaseView:           NewBaseView(user, token, "New Task — Settings"),
+				BaseView:           NewBaseViewForRequest(r, user, token, "New Task — Settings"),
 				IsNew:              true,
 				FormAction:         "/settings/tasks",
 				Errors:             ve.Fields,
@@ -199,7 +199,7 @@ func (h *SettingsTasksHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 	}
 
 	view := taskFormView{
-		BaseView:           NewBaseView(user, token, "Edit Task — Settings"),
+		BaseView:           NewBaseViewForRequest(r, user, token, "Edit Task — Settings"),
 		IsNew:              false,
 		FormAction:         "/settings/tasks/" + strconv.FormatInt(id, 10),
 		DeleteURL:          "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",
@@ -239,7 +239,7 @@ func (h *SettingsTasksHandler) Update(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			h.renderFormError(w, r, taskFormView{
-				BaseView:           NewBaseView(user, token, "Edit Task — Settings"),
+				BaseView:           NewBaseViewForRequest(r, user, token, "Edit Task — Settings"),
 				IsNew:              false,
 				FormAction:         "/settings/tasks/" + strconv.FormatInt(id, 10),
 				DeleteURL:          "/settings/tasks/" + strconv.FormatInt(id, 10) + "/delete",

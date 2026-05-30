@@ -211,6 +211,24 @@
         </div>
       </div>
 
+      {{if .IsImpersonating}}
+      <div class="border-b border-warning/30 bg-warning/15 px-4 py-3 text-warning-content">
+        <div class="container mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex min-w-0 items-center gap-2 text-sm font-semibold">
+            <i data-lucide="user-round-check" class="h-4 w-4 shrink-0"></i>
+            <span class="min-w-0 break-words">Impersonating {{.UserName}} as {{.UserRole}}. Signed in from {{.ImpersonatorName}}.</span>
+          </div>
+          <form method="POST" action="/impersonation/stop" class="shrink-0">
+            <input type="hidden" name="_csrf" value="{{.CSRFToken}}" />
+            <button type="submit" class="btn btn-warning btn-sm">
+              <i data-lucide="undo-2" class="h-4 w-4"></i>
+              Stop
+            </button>
+          </form>
+        </div>
+      </div>
+      {{end}}
+
       <main class="container mx-auto p-6 flex-1">
         {{template "content" .}}
       </main>

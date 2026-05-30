@@ -98,7 +98,7 @@ func (h *DashboardHandler) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := dashboardPageView{
-		BaseView: NewBaseView(user, token, "Mutaba'ah Yaumiyah"),
+		BaseView: NewBaseViewForRequest(r, user, token, "Mutaba'ah Yaumiyah"),
 		Inner:    inner,
 	}
 	if err := h.tmpl.Render(w, "dashboard/index.html", data); err != nil {
