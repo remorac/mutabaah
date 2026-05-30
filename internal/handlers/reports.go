@@ -53,12 +53,18 @@ type reportWeekDayView struct {
 	sortDate  string
 }
 
+type reportMatrixStatusCountView struct {
+	Status string
+	Label  string
+	Count  int
+}
+
 type reportMatrixCellView struct {
 	Scheduled   bool
 	Status      string
 	StatusLabel string
 	CompletedAt string
-	CountLabel  string
+	Counts      []reportMatrixStatusCountView
 }
 
 type reportTaskRowView struct {
@@ -759,7 +765,7 @@ func buildAggregatedReportMatrix(weekStart, weekEnd, today time.Time, sets []rep
 				Scheduled:   true,
 				Status:      aggregateStatus(counts.completed, counts.missed, counts.pending, counts.exempt),
 				StatusLabel: aggregateStatusLabel(counts.completed, counts.missed, counts.pending, counts.exempt),
-				CountLabel:  aggregateCountLabel(counts.completed, counts.missed, counts.pending, counts.exempt),
+				Counts:      aggregateStatusCounts(counts.completed, counts.missed, counts.pending, counts.exempt),
 			}
 		}
 		out = append(out, row.view)
@@ -809,21 +815,37 @@ func aggregateStatusLabel(completed, missed, pending, exempt int) string {
 	return strings.Join(parts, ", ")
 }
 
-func aggregateCountLabel(completed, missed, pending, exempt int) string {
-	parts := make([]string, 0, 4)
+func aggregateStatusCounts(completed, missed, pending, exempt int) []reportMatrixStatusCountView {
+	counts := make([]reportMatrixStatusCountView, 0, 4)
 	if completed > 0 {
-		parts = append(parts, fmt.Sprintf("C:%d", completed))
+		counts = append(counts, reportMatrixStatusCountView{
+			Status: string(services.StatusCompleted),
+			Label:  "completed",
+			Count:  completed,
+		})
 	}
 	if missed > 0 {
-		parts = append(parts, fmt.Sprintf("M:%d", missed))
+		counts = append(counts, reportMatrixStatusCountView{
+			Status: string(services.StatusMissed),
+			Label:  "missed",
+			Count:  missed,
+		})
 	}
 	if pending > 0 {
-		parts = append(parts, fmt.Sprintf("P:%d", pending))
+		counts = append(counts, reportMatrixStatusCountView{
+			Status: string(services.StatusPending),
+			Label:  "pending",
+			Count:  pending,
+		})
 	}
 	if exempt > 0 {
-		parts = append(parts, fmt.Sprintf("E:%d", exempt))
+		counts = append(counts, reportMatrixStatusCountView{
+			Status: string(services.StatusExempt),
+			Label:  "exempt",
+			Count:  exempt,
+		})
 	}
-	return strings.Join(parts, " ")
+	return counts
 }
 
 func selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd time.Time, weekStartDay time.Weekday) (string, string) {

@@ -129,9 +129,27 @@
                     {{range .Cells}}
                       <td class="text-center">
                         {{if .Scheduled}}
-                          {{if .CountLabel}}
-                            <span class="inline-flex min-h-8 min-w-16 items-center justify-center rounded-full bg-base-200 px-2 text-xs font-medium text-base-content/75" title="{{.StatusLabel}}">
-                              {{.CountLabel}}
+                          {{if .Counts}}
+                            <span class="inline-flex min-h-8 min-w-16 flex-wrap items-center justify-center gap-1" title="{{.StatusLabel}}">
+                              {{range .Counts}}
+                                {{if eq .Status "completed"}}
+                                  <span class="inline-flex min-w-7 items-center justify-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-700" title="{{.Count}} {{.Label}}">
+                                    <i data-lucide="circle-check" class="h-3 w-3"></i>{{.Count}}
+                                  </span>
+                                {{else if eq .Status "missed"}}
+                                  <span class="inline-flex min-w-7 items-center justify-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-700" title="{{.Count}} {{.Label}}">
+                                    <i data-lucide="circle-x" class="h-3 w-3"></i>{{.Count}}
+                                  </span>
+                                {{else if eq .Status "exempt"}}
+                                  <span class="inline-flex min-w-7 items-center justify-center gap-0.5 rounded-full bg-pink-100 px-1.5 py-0.5 text-xs font-semibold text-pink-700" title="{{.Count}} {{.Label}}">
+                                    <i data-lucide="moon" class="h-3 w-3"></i>{{.Count}}
+                                  </span>
+                                {{else}}
+                                  <span class="inline-flex min-w-7 items-center justify-center gap-0.5 rounded-full bg-base-200 px-1.5 py-0.5 text-xs font-semibold text-base-content/60" title="{{.Count}} {{.Label}}">
+                                    <i data-lucide="clock-3" class="h-3 w-3"></i>{{.Count}}
+                                  </span>
+                                {{end}}
+                              {{end}}
                             </span>
                           {{else if eq .Status "completed"}}
                             <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-green-100 text-green-700" title="{{.StatusLabel}}{{if .CompletedAt}} at {{.CompletedAt}}{{end}}">

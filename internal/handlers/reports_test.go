@@ -249,14 +249,25 @@ func TestBuildAggregatedReportMatrixCombinesUsersByTask(t *testing.T) {
 	if len(rows) != 1 || rows[0].TaskName != "Dhikr" {
 		t.Fatalf("rows = %+v, want one Dhikr row", rows)
 	}
-	if got := rows[0].Cells[0].CountLabel; got != "C:1 M:1" {
-		t.Fatalf("day 1 count label = %q, want C:1 M:1", got)
+	wantCounts := []reportMatrixStatusCountView{
+		{Status: "completed", Label: "completed", Count: 1},
+		{Status: "missed", Label: "missed", Count: 1},
 	}
-	if got := rows[0].Cells[1].CountLabel; got != "M:1 P:1" {
-		t.Fatalf("day 2 count label = %q, want M:1 P:1", got)
+	if got := rows[0].Cells[0].Counts; len(got) != len(wantCounts) || got[0] != wantCounts[0] || got[1] != wantCounts[1] {
+		t.Fatalf("day 1 counts = %+v, want %+v", got, wantCounts)
 	}
-	if got := rows[0].Cells[2].CountLabel; got != "E:1" {
-		t.Fatalf("day 3 count label = %q, want E:1", got)
+	wantCounts = []reportMatrixStatusCountView{
+		{Status: "missed", Label: "missed", Count: 1},
+		{Status: "pending", Label: "pending", Count: 1},
+	}
+	if got := rows[0].Cells[1].Counts; len(got) != len(wantCounts) || got[0] != wantCounts[0] || got[1] != wantCounts[1] {
+		t.Fatalf("day 2 counts = %+v, want %+v", got, wantCounts)
+	}
+	wantCounts = []reportMatrixStatusCountView{
+		{Status: "exempt", Label: "exempt", Count: 1},
+	}
+	if got := rows[0].Cells[2].Counts; len(got) != len(wantCounts) || got[0] != wantCounts[0] {
+		t.Fatalf("day 3 counts = %+v, want %+v", got, wantCounts)
 	}
 }
 
@@ -564,6 +575,78 @@ func TestReportTemplateHidesUserFilterForRegularUser(t *testing.T) {
 	} {
 		if strings.Contains(body, unwanted) {
 			t.Fatalf("rendered user report contains %s: %s", unwanted, body)
+		}
+	}
+}
+
+func TestReportTemplateRendersColorCodedCombinedCounts(t *testing.T) {
+	tmpl, err := LoadTemplates("../../web/templates")
+	if err != nil {
+		t.Fatalf("LoadTemplates() error = %v", err)
+	}
+	view := reportPageView{
+		BaseView: NewBaseView(repository.User{
+			ID:   1,
+			Name: "Admin",
+			Role: repository.UsersRoleAdmin,
+		}, "csrf-token", "Report — Mutaba'ah Yaumiyah"),
+		WeekDateValue:   "2026-05-30",
+		WeekDateMin:     reportDateInputMin(time.Saturday),
+		WeekDateStep:    7,
+		WeekLabel:       "Week 5",
+		MonthLabel:      "May 2026",
+		HasSelectedUser: true,
+		ChartJSON:       template.JS("{}"),
+		Bars: []reportBarView{
+			{Label: "Week 5", UserName: "Selected users", Completed: 1, Total: 2, Percent: 50},
+		},
+		WeekDays: []reportWeekDayView{
+			{Label: "Sat", ShortDate: "30 May"},
+		},
+		TaskRows: []reportTaskRowView{
+			{
+				TaskName:  "Dhikr",
+				Frequency: "daily",
+				Cells: []reportMatrixCellView{
+					{
+						Scheduled:   true,
+						StatusLabel: "1 completed, 1 missed, 1 pending, 1 exempt",
+						Counts: []reportMatrixStatusCountView{
+							{Status: "completed", Label: "completed", Count: 1},
+							{Status: "missed", Label: "missed", Count: 1},
+							{Status: "pending", Label: "pending", Count: 1},
+							{Status: "exempt", Label: "exempt", Count: 1},
+						},
+					},
+				},
+			},
+		},
+	}
+	rec := httptest.NewRecorder()
+
+	if err := tmpl.Render(rec, "reports/index.html", view); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		`bg-green-100`,
+		`bg-red-100`,
+		`bg-base-200`,
+		`bg-pink-100`,
+		`data-lucide="circle-check"`,
+		`data-lucide="circle-x"`,
+		`data-lucide="clock-3"`,
+		`data-lucide="moon"`,
+		`</i>1`,
+		`title="1 completed"`,
+		`title="1 missed"`,
+		`title="1 pending"`,
+		`title="1 exempt"`,
+		`title="1 completed, 1 missed, 1 pending, 1 exempt"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("rendered report missing %s: %s", want, body)
 		}
 	}
 }
