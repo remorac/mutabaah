@@ -1,0 +1,272 @@
+{{define "content"}}
+<div class="flex flex-col gap-4">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="min-w-0">
+      <h2 class="flex items-center gap-2 text-xl font-semibold">
+        <i data-lucide="trophy" class="h-5 w-5 shrink-0 text-primary"></i>
+        <span class="min-w-0 truncate">Leaderboard</span>
+      </h2>
+      <p class="text-sm opacity-70">{{.PeriodLabel}} | <span class="whitespace-nowrap">{{.RangeLabel}}</span></p>
+    </div>
+    <div class="join w-full rounded-sm shadow-sm sm:w-auto">
+      <a class="btn btn-sm join-item flex-1 border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.PreviousURL}}" aria-label="Previous period">
+        <i data-lucide="chevron-left" class="h-4 w-4"></i>
+      </a>
+      <a class="btn btn-sm join-item flex-[2] border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.CurrentURL}}">Current</a>
+      <a class="btn btn-sm join-item flex-1 border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.NextURL}}" aria-label="Next period">
+        <i data-lucide="chevron-right" class="h-4 w-4"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div class="card border border-base-200 bg-base-100 shadow-sm">
+      <div class="card-body flex flex-row items-center gap-3 p-3 sm:gap-4 sm:p-4">
+        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <i data-lucide="check-circle-2" class="h-5 w-5"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-2xl font-bold leading-none">{{.TopCompleted}}</div>
+          <div class="mt-1 text-xs opacity-60">top done</div>
+        </div>
+      </div>
+    </div>
+    <div class="card border border-base-200 bg-base-100 shadow-sm">
+      <div class="card-body flex flex-row items-center gap-3 p-3 sm:gap-4 sm:p-4">
+        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-success/10 text-success">
+          <i data-lucide="flame" class="h-5 w-5"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-2xl font-bold leading-none">{{.TopStreak}}</div>
+          <div class="mt-1 text-xs opacity-60">best streak days</div>
+        </div>
+      </div>
+    </div>
+    <div class="card border border-base-200 bg-base-100 shadow-sm">
+      <div class="card-body flex flex-row items-center gap-3 p-3 sm:gap-4 sm:p-4">
+        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-info/10 text-info">
+          <i data-lucide="percent" class="h-5 w-5"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-2xl font-bold leading-none">{{.AveragePercent}}%</div>
+          <div class="mt-1 text-xs opacity-60">{{.TotalCompleted}}/{{.TotalDue}} overall</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border border-base-200 bg-base-100 shadow-sm">
+    <div class="card-body gap-4 p-3 sm:p-6">
+      <form method="GET" action="/leaderboard" class="grid gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,14rem)_auto] sm:items-end">
+        <label class="form-control">
+          <span class="label-text font-medium">Period</span>
+          <select name="period" class="select select-bordered w-full">
+            <option value="week" {{if eq .Period "week"}}selected{{end}}>Week</option>
+            <option value="month" {{if eq .Period "month"}}selected{{end}}>Month</option>
+          </select>
+        </label>
+        <label class="form-control">
+          <span class="label-text font-medium">Date</span>
+          <input type="date" name="date" value="{{.DateValue}}" class="input input-bordered w-full" />
+        </label>
+        <button type="submit" class="btn btn-primary w-full shadow-sm sm:w-auto">
+          <i data-lucide="filter" class="h-4 w-4"></i>
+          Apply
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {{if .HasOccurrences}}
+  <div class="grid gap-4 xl:grid-cols-3">
+    <section class="card border border-base-200 bg-base-100 shadow-sm xl:col-span-2">
+      <div class="card-body gap-4 p-4 sm:p-6">
+        <div>
+          <h3 class="flex items-center gap-2 text-base font-semibold">
+            <i data-lucide="list-checks" class="h-4 w-4 text-primary"></i>
+            Task Done
+          </h3>
+          <p class="text-xs opacity-60">Ranked by completed task count</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:hidden">
+          {{range .PrimaryRows}}
+          <div class="rounded-lg border p-3 bg-base-100 {{if .IsCurrent}}border-primary/40{{else}}border-base-200{{end}}">
+            <div class="flex min-w-0 items-center gap-3">
+              <div class="grid h-9 w-10 shrink-0 place-items-center rounded-lg bg-base-200 text-sm font-bold">#{{.Rank}}</div>
+              {{if .AvatarPath}}
+              <div class="avatar shrink-0">
+                <div class="h-10 w-10 rounded-full">
+                  <img src="{{.AvatarPath}}" alt="{{.UserName}}" loading="lazy" />
+                </div>
+              </div>
+              {{else}}
+              <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-accent-content">
+                <i data-lucide="user" class="h-4 w-4"></i>
+              </div>
+              {{end}}
+              <div class="min-w-0 flex-1">
+                <div class="truncate font-medium">{{.UserName}}</div>
+                {{if .IsCurrent}}<div class="text-xs font-semibold text-primary">You</div>{{end}}
+              </div>
+              <div class="shrink-0 text-right">
+                <div class="text-lg font-bold leading-none">{{.Completed}}</div>
+                <div class="mt-1 text-[0.7rem] uppercase tracking-wide opacity-60">done</div>
+              </div>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+              <div class="rounded-md bg-base-200/70 px-2 py-2">
+                <div class="font-semibold">{{.Due}}</div>
+                <div class="mt-0.5 opacity-60">due</div>
+              </div>
+              <div class="rounded-md bg-base-200/70 px-2 py-2">
+                <div class="font-semibold">{{.Percent}}%</div>
+                <div class="mt-0.5 opacity-60">complete</div>
+              </div>
+              <div class="rounded-md bg-base-200/70 px-2 py-2">
+                <div class="font-semibold">{{.BestStreak}}</div>
+                <div class="mt-0.5 opacity-60">streak</div>
+              </div>
+            </div>
+            <progress class="progress progress-primary mt-3 h-2 w-full" value="{{.ProgressPct}}" max="100"></progress>
+          </div>
+          {{end}}
+        </div>
+        <div class="hidden overflow-x-auto rounded-lg border border-base-200 sm:block">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>User</th>
+                <th class="text-right">Done</th>
+                <th class="text-right">Due</th>
+                <th class="text-right">Completion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{range .PrimaryRows}}
+              <tr class="{{if .IsCurrent}}bg-primary/10{{end}}">
+                <td class="font-semibold">#{{.Rank}}</td>
+                <td>
+                  <div class="flex min-w-44 items-center gap-3">
+                    {{if .AvatarPath}}
+                    <div class="avatar">
+                      <div class="h-9 w-9 rounded-full">
+                        <img src="{{.AvatarPath}}" alt="{{.UserName}}" loading="lazy" />
+                      </div>
+                    </div>
+                    {{else}}
+                    <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-accent-content">
+                      <i data-lucide="user" class="h-4 w-4"></i>
+                    </div>
+                    {{end}}
+                    <div class="min-w-0">
+                      <div class="truncate font-medium">{{.UserName}}</div>
+                      {{if .IsCurrent}}<div class="text-xs text-primary">You</div>{{end}}
+                    </div>
+                  </div>
+                </td>
+                <td class="text-right font-semibold">{{.Completed}}</td>
+                <td class="text-right">{{.Due}}</td>
+                <td class="text-right">
+                  <span class="font-semibold">{{.Percent}}%</span>
+                  <progress class="progress progress-primary ml-2 h-2 w-16 align-middle" value="{{.ProgressPct}}" max="100"></progress>
+                </td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card border border-base-200 bg-base-100 shadow-sm">
+      <div class="card-body gap-4 p-4 sm:p-6">
+        <div>
+          <h3 class="flex items-center gap-2 text-base font-semibold">
+            <i data-lucide="flame" class="h-4 w-4 text-success"></i>
+            Best Streak
+          </h3>
+          <p class="text-xs opacity-60">Ranked by best fully completed day streak</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:hidden">
+          {{range .StreakRows}}
+          <div class="rounded-lg border p-3 bg-base-100 {{if .IsCurrent}}border-primary/40{{else}}border-base-200{{end}}">
+            <div class="flex min-w-0 items-center gap-3">
+              <div class="grid h-9 w-10 shrink-0 place-items-center rounded-lg bg-base-200 text-sm font-bold">#{{.Rank}}</div>
+              {{if .AvatarPath}}
+              <div class="avatar shrink-0">
+                <div class="h-10 w-10 rounded-full">
+                  <img src="{{.AvatarPath}}" alt="{{.UserName}}" loading="lazy" />
+                </div>
+              </div>
+              {{else}}
+              <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-accent-content">
+                <i data-lucide="user" class="h-4 w-4"></i>
+              </div>
+              {{end}}
+              <div class="min-w-0 flex-1">
+                <div class="truncate font-medium">{{.UserName}}</div>
+                {{if .IsCurrent}}<div class="text-xs font-semibold text-primary">You</div>{{end}}
+              </div>
+              <div class="shrink-0 text-right">
+                <div class="text-lg font-bold leading-none">{{.BestStreak}}</div>
+                <div class="mt-1 text-[0.7rem] uppercase tracking-wide opacity-60">days</div>
+              </div>
+            </div>
+          </div>
+          {{end}}
+        </div>
+        <div class="hidden overflow-x-auto rounded-lg border border-base-200 sm:block">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>User</th>
+                <th class="text-right">Streak</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{range .StreakRows}}
+              <tr class="{{if .IsCurrent}}bg-primary/10{{end}}">
+                <td class="font-semibold">#{{.Rank}}</td>
+                <td>
+                  <div class="flex min-w-44 items-center gap-3">
+                    {{if .AvatarPath}}
+                    <div class="avatar">
+                      <div class="h-9 w-9 rounded-full">
+                        <img src="{{.AvatarPath}}" alt="{{.UserName}}" loading="lazy" />
+                      </div>
+                    </div>
+                    {{else}}
+                    <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-accent-content">
+                      <i data-lucide="user" class="h-4 w-4"></i>
+                    </div>
+                    {{end}}
+                    <div class="min-w-0">
+                      <div class="truncate font-medium">{{.UserName}}</div>
+                      {{if .IsCurrent}}<div class="text-xs text-primary">You</div>{{end}}
+                    </div>
+                  </div>
+                </td>
+                <td class="text-right font-semibold">{{.BestStreak}} days</td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+  {{else}}
+  <div class="card border border-base-200 bg-base-100 shadow-sm">
+    <div class="card-body items-center py-12 text-center">
+      <div class="mb-3 grid h-16 w-16 place-items-center rounded-2xl bg-base-200">
+        <i data-lucide="circle-slash" class="h-8 w-8 opacity-40"></i>
+      </div>
+      <p class="text-sm font-medium opacity-70">No task occurrences found for this period.</p>
+    </div>
+  </div>
+  {{end}}
+</div>
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{{end}}
