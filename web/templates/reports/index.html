@@ -16,37 +16,46 @@
   </div>
 
   <!-- Metric cards -->
-  <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4">
-        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+  <div class="grid grid-cols-3 gap-2 sm:gap-3">
+    <div class="card relative overflow-hidden bg-base-100 shadow-sm border border-base-200">
+      <div class="pointer-events-none absolute -bottom-2 -right-2 text-primary opacity-15 sm:hidden">
+        <i data-lucide="percent" class="w-12 h-12 sm:w-14 sm:h-14"></i>
+      </div>
+      <div class="card-body min-w-0 p-3 sm:flex sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+        <div class="hidden w-10 h-10 rounded-xl bg-primary/10 text-primary place-items-center shrink-0 sm:grid">
           <i data-lucide="percent" class="w-5 h-5"></i>
         </div>
-        <div class="min-w-0">
-          <div class="text-2xl font-bold leading-none">{{.TotalPct}}%</div>
-          <div class="text-xs opacity-60 mt-1">completion</div>
+        <div class="relative min-w-0">
+          <div class="text-xl font-bold leading-none sm:text-2xl">{{.TotalPct}}%</div>
+          <div class="mt-1 truncate text-xs opacity-60">completion</div>
         </div>
       </div>
     </div>
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4">
-        <div class="w-10 h-10 rounded-xl bg-success/10 text-success grid place-items-center shrink-0">
+    <div class="card relative overflow-hidden bg-base-100 shadow-sm border border-base-200">
+      <div class="pointer-events-none absolute -bottom-2 -right-2 text-success opacity-15 sm:hidden">
+        <i data-lucide="check-circle-2" class="w-12 h-12 sm:w-14 sm:h-14"></i>
+      </div>
+      <div class="card-body min-w-0 p-3 sm:flex sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+        <div class="hidden w-10 h-10 rounded-xl bg-success/10 text-success place-items-center shrink-0 sm:grid">
           <i data-lucide="check-circle-2" class="w-5 h-5"></i>
         </div>
-        <div class="min-w-0">
-          <div class="text-2xl font-bold leading-none">{{.TotalDone}}</div>
-          <div class="text-xs opacity-60 mt-1">done</div>
+        <div class="relative min-w-0">
+          <div class="text-xl font-bold leading-none sm:text-2xl">{{.TotalDone}}</div>
+          <div class="mt-1 truncate text-xs opacity-60">done</div>
         </div>
       </div>
     </div>
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4">
-        <div class="w-10 h-10 rounded-xl bg-warning/10 text-warning grid place-items-center shrink-0">
+    <div class="card relative overflow-hidden bg-base-100 shadow-sm border border-base-200">
+      <div class="pointer-events-none absolute -bottom-2 -right-2 text-warning opacity-15 sm:hidden">
+        <i data-lucide="list-todo" class="w-12 h-12 sm:w-14 sm:h-14"></i>
+      </div>
+      <div class="card-body min-w-0 p-3 sm:flex sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+        <div class="hidden w-10 h-10 rounded-xl bg-warning/10 text-warning place-items-center shrink-0 sm:grid">
           <i data-lucide="list-todo" class="w-5 h-5"></i>
         </div>
-        <div class="min-w-0">
-          <div class="text-2xl font-bold leading-none">{{.TotalDue}}</div>
-          <div class="text-xs opacity-60 mt-1">due</div>
+        <div class="relative min-w-0">
+          <div class="text-xl font-bold leading-none sm:text-2xl">{{.TotalDue}}</div>
+          <div class="mt-1 truncate text-xs opacity-60">due</div>
         </div>
       </div>
     </div>

@@ -19,57 +19,21 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-    <div class="card border border-base-200 bg-base-100 shadow-sm">
-      <div class="card-body flex flex-row items-center gap-3 p-3 sm:gap-4 sm:p-4">
-        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <i data-lucide="check-circle-2" class="h-5 w-5"></i>
-        </div>
-        <div class="min-w-0">
-          <div class="text-2xl font-bold leading-none">{{.TopCompleted}}</div>
-          <div class="mt-1 text-xs opacity-60">top done</div>
-        </div>
-      </div>
-    </div>
-    <div class="card border border-base-200 bg-base-100 shadow-sm">
-      <div class="card-body flex flex-row items-center gap-3 p-3 sm:gap-4 sm:p-4">
-        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-success/10 text-success">
-          <i data-lucide="flame" class="h-5 w-5"></i>
-        </div>
-        <div class="min-w-0">
-          <div class="text-2xl font-bold leading-none">{{.TopStreak}}</div>
-          <div class="mt-1 text-xs opacity-60">best streak days</div>
-        </div>
-      </div>
-    </div>
-    <div class="card border border-base-200 bg-base-100 shadow-sm">
-      <div class="card-body flex flex-row items-center gap-3 p-3 sm:gap-4 sm:p-4">
-        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-info/10 text-info">
-          <i data-lucide="percent" class="h-5 w-5"></i>
-        </div>
-        <div class="min-w-0">
-          <div class="text-2xl font-bold leading-none">{{.AveragePercent}}%</div>
-          <div class="mt-1 text-xs opacity-60">{{.TotalCompleted}}/{{.TotalDue}} overall</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="card border border-base-200 bg-base-100 shadow-sm">
     <div class="card-body gap-4 p-3 sm:p-6">
-      <form method="GET" action="/leaderboard" class="grid gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,14rem)_auto] sm:items-end">
-        <label class="form-control">
-          <span class="label-text font-medium">Period</span>
+      <form method="GET" action="/leaderboard" class="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,14rem)_auto] sm:items-end">
+        <label class="form-control min-w-0">
+          <span class="label-text font-medium">Range</span>
           <select name="period" class="select select-bordered w-full">
             <option value="week" {{if eq .Period "week"}}selected{{end}}>Week</option>
             <option value="month" {{if eq .Period "month"}}selected{{end}}>Month</option>
           </select>
         </label>
-        <label class="form-control">
+        <label class="form-control min-w-0">
           <span class="label-text font-medium">Date</span>
           <input type="date" name="date" value="{{.DateValue}}" class="input input-bordered w-full" />
         </label>
-        <button type="submit" class="btn btn-primary w-full shadow-sm sm:w-auto">
+        <button type="submit" class="btn btn-primary col-span-2 w-full shadow-sm sm:col-span-1 sm:w-auto">
           <i data-lucide="filter" class="h-4 w-4"></i>
           Apply
         </button>
