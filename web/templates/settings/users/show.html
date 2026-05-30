@@ -35,10 +35,10 @@
 
   <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body flex flex-col gap-5 sm:flex-row sm:items-center">
-      {{if .AvatarPath}}
+      {{if .ProfileAvatarPath}}
       <span class="avatar shrink-0">
         <span class="h-20 w-20 overflow-hidden rounded-full">
-          <img src="{{.AvatarPath}}" alt="{{.Name}}" loading="lazy" class="h-full w-full rounded-full object-cover" />
+          <img src="{{.ProfileAvatarPath}}" alt="{{.Name}}" loading="lazy" class="h-full w-full rounded-full object-cover" />
         </span>
       </span>
       {{else}}

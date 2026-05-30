@@ -83,19 +83,19 @@ type userListView struct {
 
 type userDetailView struct {
 	BaseView
-	ID             int64
-	Email          string
-	Name           string
-	Role           string
-	CreatedAt      string
-	IsSelf         bool
-	AvatarPath     string
-	EditURL        string
-	ResetURL       string
-	ImpersonateURL string
-	CanImpersonate bool
-	ResetDates     []resetDateOption
-	Periods        []periodRow
+	ID                int64
+	Email             string
+	Name              string
+	Role              string
+	CreatedAt         string
+	IsSelf            bool
+	ProfileAvatarPath string
+	EditURL           string
+	ResetURL          string
+	ImpersonateURL    string
+	CanImpersonate    bool
+	ResetDates        []resetDateOption
+	Periods           []periodRow
 }
 
 type userFormView struct {
@@ -202,20 +202,20 @@ func (h *SettingsUsersHandler) Show(w http.ResponseWriter, r *http.Request) {
 	idStr := strconv.FormatInt(u.ID, 10)
 	base := NewBaseViewForRequest(r, current, token, u.Name+" — Users")
 	view := userDetailView{
-		BaseView:       base,
-		ID:             u.ID,
-		Email:          u.Email,
-		Name:           u.Name,
-		Role:           string(u.Role),
-		CreatedAt:      u.CreatedAt.Format("2006-01-02"),
-		IsSelf:         u.ID == current.ID,
-		AvatarPath:     avatarURL(u),
-		EditURL:        "/settings/users/" + idStr + "/edit",
-		ResetURL:       "/settings/users/" + idStr + "/reset-data",
-		ImpersonateURL: "/settings/users/" + idStr + "/impersonate",
-		CanImpersonate: u.ID != current.ID && !base.IsImpersonating,
-		ResetDates:     resetDateOptions(settings),
-		Periods:        rowsFromPeriods(periods),
+		BaseView:          base,
+		ID:                u.ID,
+		Email:             u.Email,
+		Name:              u.Name,
+		Role:              string(u.Role),
+		CreatedAt:         u.CreatedAt.Format("2006-01-02"),
+		IsSelf:            u.ID == current.ID,
+		ProfileAvatarPath: avatarURL(u),
+		EditURL:           "/settings/users/" + idStr + "/edit",
+		ResetURL:          "/settings/users/" + idStr + "/reset-data",
+		ImpersonateURL:    "/settings/users/" + idStr + "/impersonate",
+		CanImpersonate:    u.ID != current.ID && !base.IsImpersonating,
+		ResetDates:        resetDateOptions(settings),
+		Periods:           rowsFromPeriods(periods),
 	}
 	view.FlashNotice = popFlash(w, r)
 	if err := h.tmpl.Render(w, "settings/users/show.html", view); err != nil {
