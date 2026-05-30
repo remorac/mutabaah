@@ -149,7 +149,9 @@ func (h *ProfileHandler) CreatePeriod(w http.ResponseWriter, r *http.Request) {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
 			if isPartialRequest(r) {
-				h.renderPeriodsSection(w, r, user, token, ve.Fields, input.StartDate, input.EndDate, http.StatusUnprocessableEntity)
+				// HTMX does not swap 4xx responses by default, so return 200
+				// for validation partials and let the inline errors render.
+				h.renderPeriodsSection(w, r, user, token, ve.Fields, input.StartDate, input.EndDate, http.StatusOK)
 				return
 			}
 			periods, perr := h.menses.List(r.Context(), user.ID)
