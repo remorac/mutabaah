@@ -206,6 +206,60 @@ func TestReportChartJSONGroupsByUserOnly(t *testing.T) {
 	}
 }
 
+func TestAggregateReportBarsForDisplayCombinesUsers(t *testing.T) {
+	bars := aggregateReportBarsForDisplay([]reportBarView{
+		{Label: "Week 4", SubLabel: "18 May - 24 May", UserName: "Amina", Completed: 1, Total: 2},
+		{Label: "Week 4", SubLabel: "18 May - 24 May", UserName: "Bilal", Completed: 2, Total: 2},
+	}, "Selected users")
+	if len(bars) != 1 {
+		t.Fatalf("aggregated bars = %d, want 1", len(bars))
+	}
+	if bars[0].UserName != "Selected users" || bars[0].Completed != 3 || bars[0].Total != 4 || bars[0].Percent != 75 {
+		t.Fatalf("aggregated bar = %+v, want combined Selected users 3/4 75%%", bars[0])
+	}
+}
+
+func TestBuildAggregatedReportMatrixCombinesUsersByTask(t *testing.T) {
+	task := reportTask(1, "Dhikr")
+	sets := []reportOccurrenceSet{
+		{
+			User: repository.User{ID: 1, Name: "Amina"},
+			Occurrences: []services.TaskOccurrence{
+				reportOcc(task, reportDate(2026, 5, 25), services.StatusCompleted),
+				reportOcc(task, reportDate(2026, 5, 26), services.StatusMissed),
+			},
+		},
+		{
+			User: repository.User{ID: 2, Name: "Bilal"},
+			Occurrences: []services.TaskOccurrence{
+				reportOcc(task, reportDate(2026, 5, 25), services.StatusMissed),
+				reportOcc(task, reportDate(2026, 5, 26), services.StatusPending),
+				reportOcc(task, reportDate(2026, 5, 27), services.StatusExempt),
+			},
+		},
+	}
+
+	days, rows, done, due := buildAggregatedReportMatrix(reportDate(2026, 5, 25), reportDate(2026, 5, 31), reportDate(2026, 5, 31), sets)
+	if len(days) != 7 {
+		t.Fatalf("days = %d, want 7", len(days))
+	}
+	if done != 1 || due != 4 {
+		t.Fatalf("totals = %d/%d, want 1/4 with exempt excluded", done, due)
+	}
+	if len(rows) != 1 || rows[0].TaskName != "Dhikr" {
+		t.Fatalf("rows = %+v, want one Dhikr row", rows)
+	}
+	if got := rows[0].Cells[0].CountLabel; got != "C:1 M:1" {
+		t.Fatalf("day 1 count label = %q, want C:1 M:1", got)
+	}
+	if got := rows[0].Cells[1].CountLabel; got != "M:1 P:1" {
+		t.Fatalf("day 2 count label = %q, want M:1 P:1", got)
+	}
+	if got := rows[0].Cells[2].CountLabel; got != "E:1" {
+		t.Fatalf("day 3 count label = %q, want E:1", got)
+	}
+}
+
 func TestParseReportFallbacks(t *testing.T) {
 	start, value := parseReportWeek("not-a-week", reportDate(2026, 5, 27), time.Saturday)
 	if got := start.Format("2006-01-02"); got != "2026-05-23" {
@@ -246,12 +300,20 @@ func TestSelectedReportUsers(t *testing.T) {
 		t.Fatalf("options = %+v, want no single selected option", options)
 	}
 
-	selected, options, hasSelected = selectedReportUsers(users, []string{"2"}, 1)
-	if !hasSelected || len(selected) != 1 || selected[0].ID != 2 {
-		t.Fatalf("selected = %+v hasSelected=%v, want only Bilal", selected, hasSelected)
+	selected, options, hasSelected = selectedReportUsers(users, []string{"2", "1", "2", "bad", "99"}, 1)
+	if !hasSelected || len(selected) != 2 || selected[0].ID != 1 || selected[1].ID != 2 {
+		t.Fatalf("selected = %+v hasSelected=%v, want Amina and Bilal once", selected, hasSelected)
 	}
-	if options[0].Selected || !options[1].Selected {
-		t.Fatalf("options = %+v, want Bilal selected", options)
+	if !options[0].Selected || !options[1].Selected {
+		t.Fatalf("options = %+v, want both users selected", options)
+	}
+
+	selected, options, hasSelected = selectedReportUsers(users, []string{"99"}, 1)
+	if !hasSelected || len(selected) != 1 || selected[0].ID != 1 {
+		t.Fatalf("unknown filter selected %+v hasSelected=%v, want fallback Amina", selected, hasSelected)
+	}
+	if !options[0].Selected || options[1].Selected {
+		t.Fatalf("options = %+v, want fallback Amina selected", options)
 	}
 }
 
@@ -262,12 +324,12 @@ func TestSelectedReportUsersForCurrent_AdminHonorsFilter(t *testing.T) {
 		{ID: 2, Name: "Bilal", Role: repository.UsersRoleUser},
 	}
 
-	selected, options, hasSelected := selectedReportUsersForCurrent(current, users, []string{"2"})
-	if !hasSelected || len(selected) != 1 || selected[0].ID != 2 {
-		t.Fatalf("selected = %+v hasSelected=%v, want admin-selected Bilal", selected, hasSelected)
+	selected, options, hasSelected := selectedReportUsersForCurrent(current, users, []string{"2", "1"})
+	if !hasSelected || len(selected) != 2 || selected[0].ID != 1 || selected[1].ID != 2 {
+		t.Fatalf("selected = %+v hasSelected=%v, want both admin-selected users", selected, hasSelected)
 	}
-	if len(options) != 2 || options[0].Selected || !options[1].Selected {
-		t.Fatalf("options = %+v, want Bilal selected", options)
+	if len(options) != 2 || !options[0].Selected || !options[1].Selected {
+		t.Fatalf("options = %+v, want both users selected", options)
 	}
 }
 
@@ -434,7 +496,7 @@ func TestReportTemplateRendersUserFilterForAdmin(t *testing.T) {
 		ChartJSON:         template.JS("{}"),
 		UserOptions: []reportUserOption{
 			{ID: 1, Name: "Admin", Selected: true},
-			{ID: 2, Name: "User"},
+			{ID: 2, Name: "User", Selected: true},
 		},
 	}
 	rec := httptest.NewRecorder()
@@ -446,8 +508,10 @@ func TestReportTemplateRendersUserFilterForAdmin(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		`name="user_id"`,
-		`<span class="label-text font-medium">User</span>`,
-		`/reports/export.pdf?week_start=2026-05-30&user_id=1&ts=1777777777000`,
+		`id="report-all-users"`,
+		`<legend class="label-text font-medium mb-2">Users</legend>`,
+		`class="checkbox checkbox-sm report-user-checkbox" checked`,
+		`/reports/export.pdf?week_start=2026-05-30&user_id=1&user_id=2&ts=1777777777000`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("rendered admin report missing %s: %s", want, body)
@@ -494,7 +558,8 @@ func TestReportTemplateHidesUserFilterForRegularUser(t *testing.T) {
 	}
 	for _, unwanted := range []string{
 		`name="user_id"`,
-		`<span class="label-text font-medium">User</span>`,
+		`id="report-all-users"`,
+		`<legend class="label-text font-medium mb-2">Users</legend>`,
 		`user_id=`,
 	} {
 		if strings.Contains(body, unwanted) {
@@ -649,5 +714,60 @@ func TestBuildReportPDFContainsPercentageChartAndStatusMatrix(t *testing.T) {
 		if !bytes.Contains(pdf, wantVector) {
 			t.Fatalf("PDF does not contain status icon vector command %q", wantVector)
 		}
+	}
+}
+
+func TestBuildReportPDFMultiUserStartsEachUserOnNewPage(t *testing.T) {
+	baseDays := []reportWeekDayView{
+		{Label: "Mon", ShortDate: "25 May"},
+		{Label: "Tue", ShortDate: "26 May"},
+		{Label: "Wed", ShortDate: "27 May"},
+		{Label: "Thu", ShortDate: "28 May"},
+		{Label: "Fri", ShortDate: "29 May"},
+		{Label: "Sat", ShortDate: "30 May"},
+		{Label: "Sun", ShortDate: "31 May"},
+	}
+	pdf, err := buildReportPDF(reportData{
+		WeekValue:        "2026-W22",
+		IsMultiUser:      true,
+		AllUsersSelected: true,
+		UserReports: []reportData{
+			{
+				WeekValue:        "2026-W22",
+				WeekLabel:        "Week 5",
+				WeekRangeLabel:   "25 May - 31 May",
+				MonthLabel:       "May 2026",
+				SelectedUserName: "Amina",
+				TotalDone:        1,
+				TotalDue:         1,
+				TotalPct:         100,
+				Bars:             []reportBarView{{Label: "Week 5", SubLabel: "25 May - 31 May", UserName: "Amina", Completed: 1, Total: 1, Percent: 100}},
+				WeekDays:         baseDays,
+			},
+			{
+				WeekValue:        "2026-W22",
+				WeekLabel:        "Week 5",
+				WeekRangeLabel:   "25 May - 31 May",
+				MonthLabel:       "May 2026",
+				SelectedUserName: "Bilal",
+				TotalDone:        0,
+				TotalDue:         1,
+				TotalPct:         0,
+				Bars:             []reportBarView{{Label: "Week 5", SubLabel: "25 May - 31 May", UserName: "Bilal", Completed: 0, Total: 1, Percent: 0}},
+				WeekDays:         baseDays,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("buildReportPDF() error = %v", err)
+	}
+	if pages := bytes.Count(pdf, []byte("/Type /Page")); pages < 2 {
+		t.Fatalf("PDF page count marker = %d, want at least 2", pages)
+	}
+	if got := reportPDFFilename(reportData{WeekValue: "2026-W22", IsMultiUser: true, AllUsersSelected: true}); got != "all-users-2026-W22.pdf" {
+		t.Fatalf("all-user filename = %q", got)
+	}
+	if got := reportPDFFilename(reportData{WeekValue: "2026-W22", IsMultiUser: true}); got != "selected-users-2026-W22.pdf" {
+		t.Fatalf("selected-user filename = %q", got)
 	}
 }

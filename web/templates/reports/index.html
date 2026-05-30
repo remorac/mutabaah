@@ -62,15 +62,21 @@
           </label>
 
           {{if .CanFilterUsers}}
-            <label class="form-control">
-              <span class="label-text font-medium">User</span>
-              <select name="user_id" class="select select-bordered w-full">
-                <option value="" {{if not .HasSelectedUser}}selected{{end}} disabled>Select user</option>
+            <fieldset class="form-control">
+              <legend class="label-text font-medium mb-2">Users</legend>
+              <label class="flex items-center gap-2 rounded-lg border border-base-200 px-3 py-2 text-sm">
+                <input type="checkbox" id="report-all-users" class="checkbox checkbox-sm" {{if .AllUsersSelected}}checked{{end}} />
+                <span>All users</span>
+              </label>
+              <div class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-base-200 p-2">
                 {{range .UserOptions}}
-                  <option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.Name}}</option>
+                  <label class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-base-200/70">
+                    <input type="checkbox" name="user_id" value="{{.ID}}" class="checkbox checkbox-sm report-user-checkbox" {{if .Selected}}checked{{end}} />
+                    <span class="truncate">{{.Name}}</span>
+                  </label>
                 {{end}}
-              </select>
-            </label>
+              </div>
+            </fieldset>
           {{end}}
 
           <div class="flex flex-wrap items-center gap-2 pt-2">
@@ -123,7 +129,11 @@
                     {{range .Cells}}
                       <td class="text-center">
                         {{if .Scheduled}}
-                          {{if eq .Status "completed"}}
+                          {{if .CountLabel}}
+                            <span class="inline-flex min-h-8 min-w-16 items-center justify-center rounded-full bg-base-200 px-2 text-xs font-medium text-base-content/75" title="{{.StatusLabel}}">
+                              {{.CountLabel}}
+                            </span>
+                          {{else if eq .Status "completed"}}
                             <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-green-100 text-green-700" title="{{.StatusLabel}}{{if .CompletedAt}} at {{.CompletedAt}}{{end}}">
                               <i data-lucide="circle-check" class="h-4 w-4"></i>
                             </span>
@@ -168,6 +178,27 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   if (window.lucide) window.lucide.createIcons();
+
+  (() => {
+    const allUsers = document.getElementById("report-all-users");
+    const checkboxes = Array.from(document.querySelectorAll(".report-user-checkbox"));
+    if (!allUsers || checkboxes.length === 0) return;
+
+    const syncAllUsers = () => {
+      const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+      allUsers.checked = selectedCount === checkboxes.length;
+      allUsers.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
+    };
+
+    allUsers.addEventListener("change", () => {
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = allUsers.checked;
+      });
+      allUsers.indeterminate = false;
+    });
+    checkboxes.forEach((checkbox) => checkbox.addEventListener("change", syncAllUsers));
+    syncAllUsers();
+  })();
 
   (() => {
     const canvas = document.getElementById("report-completion-chart");

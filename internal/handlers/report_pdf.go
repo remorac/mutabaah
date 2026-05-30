@@ -223,6 +223,20 @@ func buildReportPDF(report reportData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(report.UserReports) > 0 {
+		for i, userReport := range report.UserReports {
+			if i > 0 {
+				p.newPage()
+			}
+			drawReportPDFPage(p, userReport)
+		}
+		return p.finish()
+	}
+	drawReportPDFPage(p, report)
+	return p.finish()
+}
+
+func drawReportPDFPage(p *simplePDF, report reportData) {
 	y := pdfPageHeight - pdfMargin
 
 	y = drawReportPDFHeader(p, report, y)
@@ -243,8 +257,6 @@ func buildReportPDF(report reportData) ([]byte, error) {
 	drawReportPDFTableTitle(p, pdfMargin, y, pdfPageWidth-pdfMargin*2, report.WeekLabel, report.MonthLabel)
 	y -= 34
 	drawReportPDFMatrixTable(p, report.WeekLabel, report.MonthLabel, report.WeekDays, report.TaskRows, y)
-
-	return p.finish()
 }
 
 func drawReportPDFHeader(p *simplePDF, report reportData, y float64) float64 {

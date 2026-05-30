@@ -58,6 +58,7 @@ type reportMatrixCellView struct {
 	Status      string
 	StatusLabel string
 	CompletedAt string
+	CountLabel  string
 }
 
 type reportTaskRowView struct {
@@ -82,6 +83,8 @@ type reportPageView struct {
 	MonthLabel        string
 	CanFilterUsers    bool
 	HasSelectedUser   bool
+	IsMultiUser       bool
+	AllUsersSelected  bool
 	ExportCacheBuster int64
 	UserOptions       []reportUserOption
 	Bars              []reportBarView
@@ -114,25 +117,30 @@ type reportOccurrenceSet struct {
 }
 
 type reportData struct {
-	WeekStart        time.Time
-	WeekEnd          time.Time
-	WeekValue        string
-	WeekDateValue    string
-	WeekDateMin      string
-	WeekDateStep     int
-	WeekLabel        string
-	WeekRangeLabel   string
-	MonthLabel       string
-	CanFilterUsers   bool
-	HasSelectedUser  bool
-	SelectedUserName string
-	UserOptions      []reportUserOption
-	Bars             []reportBarView
-	WeekDays         []reportWeekDayView
-	TaskRows         []reportTaskRowView
-	TotalDone        int
-	TotalDue         int
-	TotalPct         int
+	WeekStart         time.Time
+	WeekEnd           time.Time
+	WeekValue         string
+	WeekDateValue     string
+	WeekDateMin       string
+	WeekDateStep      int
+	WeekLabel         string
+	WeekRangeLabel    string
+	MonthLabel        string
+	CanFilterUsers    bool
+	HasSelectedUser   bool
+	IsMultiUser       bool
+	AllUsersSelected  bool
+	SelectedUserName  string
+	SelectedUserCount int
+	UserOptionCount   int
+	UserOptions       []reportUserOption
+	Bars              []reportBarView
+	WeekDays          []reportWeekDayView
+	TaskRows          []reportTaskRowView
+	TotalDone         int
+	TotalDue          int
+	TotalPct          int
+	UserReports       []reportData
 }
 
 // Show renders the reports page.
@@ -157,6 +165,8 @@ func (h *ReportHandler) Show(w http.ResponseWriter, r *http.Request) {
 		MonthLabel:        report.MonthLabel,
 		CanFilterUsers:    report.CanFilterUsers,
 		HasSelectedUser:   report.HasSelectedUser,
+		IsMultiUser:       report.IsMultiUser,
+		AllUsersSelected:  report.AllUsersSelected,
 		ExportCacheBuster: h.now().UnixMilli(),
 		UserOptions:       report.UserOptions,
 		Bars:              report.Bars,
@@ -195,6 +205,12 @@ func (h *ReportHandler) ExportPDF(w http.ResponseWriter, r *http.Request) {
 }
 
 func reportPDFFilename(report reportData) string {
+	if report.IsMultiUser {
+		if report.AllUsersSelected {
+			return fmt.Sprintf("all-users-%s.pdf", report.WeekValue)
+		}
+		return fmt.Sprintf("selected-users-%s.pdf", report.WeekValue)
+	}
 	return fmt.Sprintf("%s-%s.pdf", reportFilenameSlug(report.SelectedUserName), report.WeekValue)
 }
 
@@ -257,7 +273,7 @@ func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 		selectedUsers, options, hasSelectedUser = selectedReportUsersForCurrent(current, nil, r.URL.Query()["user_id"])
 	}
 
-	var selectedUserName string
+	selectedUserName := "Selected users"
 	if len(selectedUsers) > 0 {
 		selectedUserName = selectedUsers[0].Name
 	}
@@ -273,28 +289,84 @@ func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 
 	bars, _, _ := buildReportBars(monthStart, monthEnd, today, settings.WeekStartDay, sets)
 	weekDays, taskRows, done, due := buildReportMatrix(weekStart, weekEnd, today, sets)
+	userReports := make([]reportData, 0)
+	isMultiUser := len(selectedUsers) > 1
+	if isMultiUser {
+		selectedUserName = "Selected users"
+		bars = aggregateReportBarsForDisplay(bars, selectedUserName)
+		weekDays, taskRows, done, due = buildAggregatedReportMatrix(weekStart, weekEnd, today, sets)
+		userReports = buildPerUserReportData(selectedUsers, sets, monthStart, monthEnd, weekStart, weekEnd, today, settings.WeekStartDay, weekValue)
+	}
 	weekLabel, weekRangeLabel := selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd, settings.WeekStartDay)
 	return reportData{
-		WeekStart:        weekStart,
-		WeekEnd:          weekEnd,
-		WeekValue:        weekValue,
-		WeekDateValue:    weekStart.Format("2006-01-02"),
-		WeekDateMin:      reportDateInputMin(settings.WeekStartDay),
-		WeekDateStep:     7,
-		WeekLabel:        weekLabel,
-		WeekRangeLabel:   weekRangeLabel,
-		MonthLabel:       monthStart.Format("January 2006"),
-		CanFilterUsers:   canFilterUsers,
-		HasSelectedUser:  hasSelectedUser,
-		SelectedUserName: selectedUserName,
-		UserOptions:      options,
-		Bars:             bars,
-		WeekDays:         weekDays,
-		TaskRows:         taskRows,
-		TotalDone:        done,
-		TotalDue:         due,
-		TotalPct:         percent(done, due),
+		WeekStart:         weekStart,
+		WeekEnd:           weekEnd,
+		WeekValue:         weekValue,
+		WeekDateValue:     weekStart.Format("2006-01-02"),
+		WeekDateMin:       reportDateInputMin(settings.WeekStartDay),
+		WeekDateStep:      7,
+		WeekLabel:         weekLabel,
+		WeekRangeLabel:    weekRangeLabel,
+		MonthLabel:        monthStart.Format("January 2006"),
+		CanFilterUsers:    canFilterUsers,
+		HasSelectedUser:   hasSelectedUser,
+		IsMultiUser:       isMultiUser,
+		AllUsersSelected:  len(selectedUsers) > 0 && len(selectedUsers) == len(options),
+		SelectedUserName:  selectedUserName,
+		SelectedUserCount: len(selectedUsers),
+		UserOptionCount:   len(options),
+		UserOptions:       options,
+		Bars:              bars,
+		WeekDays:          weekDays,
+		TaskRows:          taskRows,
+		TotalDone:         done,
+		TotalDue:          due,
+		TotalPct:          percent(done, due),
+		UserReports:       userReports,
 	}, nil
+}
+
+func buildPerUserReportData(selectedUsers []repository.User, sets []reportOccurrenceSet, monthStart, monthEnd, weekStart, weekEnd, today time.Time, weekStartDay time.Weekday, weekValue string) []reportData {
+	weekLabel, weekRangeLabel := selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd, weekStartDay)
+	reports := make([]reportData, 0, len(selectedUsers))
+	for _, user := range selectedUsers {
+		var userSet reportOccurrenceSet
+		found := false
+		for _, set := range sets {
+			if set.User.ID == user.ID {
+				userSet = set
+				found = true
+				break
+			}
+		}
+		if !found {
+			userSet = reportOccurrenceSet{User: user}
+		}
+		userSets := []reportOccurrenceSet{userSet}
+		bars, _, _ := buildReportBars(monthStart, monthEnd, today, weekStartDay, userSets)
+		weekDays, taskRows, done, due := buildReportMatrix(weekStart, weekEnd, today, userSets)
+		reports = append(reports, reportData{
+			WeekStart:         weekStart,
+			WeekEnd:           weekEnd,
+			WeekValue:         weekValue,
+			WeekDateValue:     weekStart.Format("2006-01-02"),
+			WeekDateMin:       reportDateInputMin(weekStartDay),
+			WeekDateStep:      7,
+			WeekLabel:         weekLabel,
+			WeekRangeLabel:    weekRangeLabel,
+			MonthLabel:        monthStart.Format("January 2006"),
+			HasSelectedUser:   true,
+			SelectedUserName:  user.Name,
+			SelectedUserCount: 1,
+			Bars:              bars,
+			WeekDays:          weekDays,
+			TaskRows:          taskRows,
+			TotalDone:         done,
+			TotalDue:          due,
+			TotalPct:          percent(done, due),
+		})
+	}
+	return reports
 }
 
 func reportChartJSON(bars []reportBarView) template.JS {
@@ -401,30 +473,36 @@ func isoMondayWeekStartFor(day time.Time) time.Time {
 }
 
 func selectedReportUsers(all []repository.User, raw []string, fallbackID int64) ([]repository.User, []reportUserOption, bool) {
-	var selectedID int64
+	selectedIDs := map[int64]bool{}
 	for _, s := range raw {
 		id, err := strconv.ParseInt(s, 10, 64)
 		if err == nil && id > 0 {
-			selectedID = id
-			break
+			selectedIDs[id] = true
 		}
 	}
-	if selectedID == 0 {
-		selectedID = fallbackID
+	if len(selectedIDs) == 0 && fallbackID > 0 {
+		selectedIDs[fallbackID] = true
 	}
 
 	selected := make([]repository.User, 0, len(all))
 	options := make([]reportUserOption, 0, len(all))
-	hasSelected := false
 	for _, u := range all {
-		isSelected := selectedID == u.ID
+		isSelected := selectedIDs[u.ID]
 		options = append(options, reportUserOption{ID: u.ID, Name: u.Name, Selected: isSelected})
 		if isSelected {
 			selected = append(selected, u)
-			hasSelected = true
 		}
 	}
-	return selected, options, hasSelected
+	if len(selected) == 0 && fallbackID > 0 {
+		for i, u := range all {
+			if u.ID == fallbackID {
+				selected = append(selected, u)
+				options[i].Selected = true
+				break
+			}
+		}
+	}
+	return selected, options, len(selected) > 0
 }
 
 func selectedReportUsersForCurrent(current repository.User, all []repository.User, raw []string) ([]repository.User, []reportUserOption, bool) {
@@ -436,6 +514,28 @@ func selectedReportUsersForCurrent(current repository.User, all []repository.Use
 
 func buildReportBars(periodStart, periodEnd, today time.Time, weekStartDay time.Weekday, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
 	return buildWeeklyReportBars(periodStart, periodEnd, today, weekStartDay, sets)
+}
+
+func aggregateReportBarsForDisplay(bars []reportBarView, userName string) []reportBarView {
+	indexes := map[string]int{}
+	out := make([]reportBarView, 0)
+	for _, bar := range bars {
+		key := bar.Label + "\x00" + bar.SubLabel
+		idx, ok := indexes[key]
+		if !ok {
+			idx = len(out)
+			indexes[key] = idx
+			out = append(out, reportBarView{
+				Label:    bar.Label,
+				SubLabel: bar.SubLabel,
+				UserName: userName,
+			})
+		}
+		out[idx].Completed += bar.Completed
+		out[idx].Total += bar.Total
+		out[idx].Percent = percent(out[idx].Completed, out[idx].Total)
+	}
+	return out
 }
 
 func buildWeeklyReportBars(periodStart, periodEnd, today time.Time, weekStartDay time.Weekday, sets []reportOccurrenceSet) ([]reportBarView, int, int) {
@@ -566,6 +666,164 @@ func buildReportMatrix(weekStart, weekEnd, today time.Time, sets []reportOccurre
 		return rows[i].TaskID < rows[j].TaskID
 	})
 	return days, rows, done, due
+}
+
+func buildAggregatedReportMatrix(weekStart, weekEnd, today time.Time, sets []reportOccurrenceSet) ([]reportWeekDayView, []reportTaskRowView, int, int) {
+	days := make([]reportWeekDayView, 0, 7)
+	dayIndexes := map[string]int{}
+	for d := dateOnly(weekStart); !d.After(weekEnd); d = d.AddDate(0, 0, 1) {
+		key := d.Format("2006-01-02")
+		dayIndexes[key] = len(days)
+		days = append(days, reportWeekDayView{
+			Date:      d.Format("02 Jan 2006"),
+			Label:     d.Format("Mon"),
+			ShortDate: d.Format("02 Jan"),
+			sortDate:  key,
+		})
+	}
+
+	type statusCounts struct {
+		completed int
+		missed    int
+		pending   int
+		exempt    int
+	}
+	type aggregateRow struct {
+		view   reportTaskRowView
+		counts []statusCounts
+	}
+
+	rowIndexes := map[int64]int{}
+	rows := make([]aggregateRow, 0)
+	done := 0
+	due := 0
+
+	for _, set := range sets {
+		for _, occ := range set.Occurrences {
+			dueDate := dateOnly(occ.DueDate)
+			if dueDate.Before(weekStart) || dueDate.After(weekEnd) {
+				continue
+			}
+			dayIndex, ok := dayIndexes[dueDate.Format("2006-01-02")]
+			if !ok {
+				continue
+			}
+
+			if occurrenceCountsTowardDue(occ, today) {
+				due++
+			}
+			if occ.Status == services.StatusCompleted {
+				done++
+			}
+
+			rowIndex, ok := rowIndexes[occ.Task.ID]
+			if !ok {
+				rowIndex = len(rows)
+				rowIndexes[occ.Task.ID] = rowIndex
+				rows = append(rows, aggregateRow{
+					view: reportTaskRowView{
+						TaskID:       occ.Task.ID,
+						TaskName:     occ.Task.Title,
+						Description:  occ.Task.Description.String,
+						Frequency:    string(occ.Task.Frequency),
+						Cells:        make([]reportMatrixCellView, len(days)),
+						sortSequence: occ.Task.Sequence,
+						sortTitle:    occ.Task.Title,
+					},
+					counts: make([]statusCounts, len(days)),
+				})
+			}
+
+			cellCounts := &rows[rowIndex].counts[dayIndex]
+			switch occ.Status {
+			case services.StatusCompleted:
+				cellCounts.completed++
+			case services.StatusMissed:
+				cellCounts.missed++
+			case services.StatusExempt:
+				cellCounts.exempt++
+			default:
+				cellCounts.pending++
+			}
+		}
+	}
+
+	out := make([]reportTaskRowView, 0, len(rows))
+	for _, row := range rows {
+		for i, counts := range row.counts {
+			total := counts.completed + counts.missed + counts.pending + counts.exempt
+			if total == 0 {
+				continue
+			}
+			row.view.Cells[i] = reportMatrixCellView{
+				Scheduled:   true,
+				Status:      aggregateStatus(counts.completed, counts.missed, counts.pending, counts.exempt),
+				StatusLabel: aggregateStatusLabel(counts.completed, counts.missed, counts.pending, counts.exempt),
+				CountLabel:  aggregateCountLabel(counts.completed, counts.missed, counts.pending, counts.exempt),
+			}
+		}
+		out = append(out, row.view)
+	}
+
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].sortSequence != out[j].sortSequence {
+			return out[i].sortSequence < out[j].sortSequence
+		}
+		if out[i].sortTitle != out[j].sortTitle {
+			return out[i].sortTitle < out[j].sortTitle
+		}
+		return out[i].TaskID < out[j].TaskID
+	})
+	return days, out, done, due
+}
+
+func aggregateStatus(completed, missed, pending, exempt int) string {
+	switch {
+	case missed > 0:
+		return string(services.StatusMissed)
+	case pending > 0:
+		return string(services.StatusPending)
+	case completed > 0:
+		return string(services.StatusCompleted)
+	case exempt > 0:
+		return string(services.StatusExempt)
+	default:
+		return ""
+	}
+}
+
+func aggregateStatusLabel(completed, missed, pending, exempt int) string {
+	parts := make([]string, 0, 4)
+	if completed > 0 {
+		parts = append(parts, fmt.Sprintf("%d completed", completed))
+	}
+	if missed > 0 {
+		parts = append(parts, fmt.Sprintf("%d missed", missed))
+	}
+	if pending > 0 {
+		parts = append(parts, fmt.Sprintf("%d pending", pending))
+	}
+	if exempt > 0 {
+		parts = append(parts, fmt.Sprintf("%d exempt", exempt))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func aggregateCountLabel(completed, missed, pending, exempt int) string {
+	parts := make([]string, 0, 4)
+	if completed > 0 {
+		parts = append(parts, fmt.Sprintf("C:%d", completed))
+	}
+	if missed > 0 {
+		parts = append(parts, fmt.Sprintf("M:%d", missed))
+	}
+	if pending > 0 {
+		parts = append(parts, fmt.Sprintf("P:%d", pending))
+	}
+	if exempt > 0 {
+		parts = append(parts, fmt.Sprintf("E:%d", exempt))
+	}
+	return strings.Join(parts, " ")
 }
 
 func selectedReportWeekLabels(monthStart, monthEnd, weekStart, weekEnd time.Time, weekStartDay time.Weekday) (string, string) {
