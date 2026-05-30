@@ -605,8 +605,9 @@ func TestReportTemplateRendersColorCodedCombinedCounts(t *testing.T) {
 		},
 		TaskRows: []reportTaskRowView{
 			{
-				TaskName:  "Dhikr",
-				Frequency: "daily",
+				TaskName:    "Dhikr",
+				Frequency:   "weekly",
+				Description: "Morning remembrance",
 				Cells: []reportMatrixCellView{
 					{
 						Scheduled:   true,
@@ -630,6 +631,10 @@ func TestReportTemplateRendersColorCodedCombinedCounts(t *testing.T) {
 
 	body := rec.Body.String()
 	for _, want := range []string{
+		`class="flex flex-col gap-3 sm:hidden"`,
+		`class="hidden overflow-x-auto border border-base-200 rounded-lg sm:block"`,
+		`Morning remembrance`,
+		`<span class="badge badge-outline badge-xs font-normal">weekly</span>`,
 		`bg-green-100`,
 		`bg-red-100`,
 		`bg-base-200`,
