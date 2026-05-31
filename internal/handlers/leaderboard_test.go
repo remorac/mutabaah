@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"net/http/httptest"
 	"strings"
@@ -38,8 +39,8 @@ func TestParseLeaderboardPeriodDefaultsToCurrentWeek(t *testing.T) {
 	today := leaderboardDate(2026, 5, 30)
 	period := parseLeaderboardPeriod("bad", "not-a-date", today, time.Saturday)
 
-	if period.Kind != "week" || period.Label != "Week" {
-		t.Fatalf("period = %s/%s, want week/Week", period.Kind, period.Label)
+	if period.Kind != "week" || period.Label != "Weekly" {
+		t.Fatalf("period = %s/%s, want week/Weekly", period.Kind, period.Label)
 	}
 	if got := period.Start.Format("2006-01-02"); got != "2026-05-30" {
 		t.Fatalf("start = %s, want 2026-05-30", got)
@@ -69,8 +70,8 @@ func TestParseLeaderboardPeriodUsesConfiguredWeekStart(t *testing.T) {
 func TestParseLeaderboardPeriodMonthBounds(t *testing.T) {
 	period := parseLeaderboardPeriod("month", "2026-02-14", leaderboardDate(2026, 12, 31), time.Saturday)
 
-	if period.Kind != "month" || period.Label != "Month" {
-		t.Fatalf("period = %s/%s, want month/Month", period.Kind, period.Label)
+	if period.Kind != "month" || period.Label != "Monthly" {
+		t.Fatalf("period = %s/%s, want month/Monthly", period.Kind, period.Label)
 	}
 	if got := period.Start.Format("2006-01-02"); got != "2026-02-01" {
 		t.Fatalf("month start = %s, want 2026-02-01", got)
@@ -198,7 +199,7 @@ func TestLeaderboardTemplateRendersSectionsAndCurrentUser(t *testing.T) {
 			Role: repository.UsersRoleUser,
 		}, "csrf-token", "Leaderboard — Mutaba'ah Yaumiyah"),
 		Period:         "week",
-		PeriodLabel:    "Week",
+		PeriodLabel:    "Weekly",
 		DateValue:      "2026-05-30",
 		RangeLabel:     "30 May 2026 - 05 Jun 2026",
 		PreviousURL:    "/leaderboard?period=week&date=2026-05-23",
@@ -231,6 +232,8 @@ func TestLeaderboardTemplateRendersSectionsAndCurrentUser(t *testing.T) {
 		`name="period"`,
 		`name="date"`,
 		`value="2026-05-30"`,
+		`Export PDF`,
+		`/leaderboard/export.pdf?period=week&date=2026-05-30`,
 		`Bilal`,
 		`You`,
 		`Amina`,
@@ -254,7 +257,7 @@ func TestLeaderboardTemplateRendersEmptyState(t *testing.T) {
 			Role: repository.UsersRoleUser,
 		}, "csrf-token", "Leaderboard — Mutaba'ah Yaumiyah"),
 		Period:         "month",
-		PeriodLabel:    "Month",
+		PeriodLabel:    "Monthly",
 		DateValue:      "2026-05-01",
 		RangeLabel:     "01 May 2026 - 31 May 2026",
 		PreviousURL:    "/leaderboard?period=month&date=2026-04-01",
@@ -276,5 +279,47 @@ func TestLeaderboardTemplateRendersEmptyState(t *testing.T) {
 	body := rec.Body.String()
 	if !strings.Contains(body, "No task occurrences found for this period.") {
 		t.Fatalf("rendered leaderboard missing empty state: %s", body)
+	}
+}
+
+func TestBuildLeaderboardPDFContainsRankings(t *testing.T) {
+	pdf, err := buildLeaderboardPDF(leaderboardPageView{
+		Period:         "week",
+		PeriodLabel:    "Weekly",
+		DateValue:      "2026-05-30",
+		RangeLabel:     "30 May 2026 - 05 Jun 2026",
+		HasOccurrences: true,
+		TopCompleted:   2,
+		TopStreak:      3,
+		TotalCompleted: 3,
+		TotalDue:       4,
+		AveragePercent: 75,
+		PrimaryRows: []leaderboardRowView{
+			{Rank: 1, UserName: "Bilal", IsCurrent: true, Completed: 2, Due: 2, Percent: 100, ProgressPct: 100},
+			{Rank: 2, UserName: "Amina", Completed: 1, Due: 2, Percent: 50, ProgressPct: 50},
+		},
+		StreakRows: []leaderboardRowView{
+			{Rank: 1, UserName: "Amina", BestStreak: 3, Completed: 1, Due: 2, Percent: 50, ProgressPct: 50},
+			{Rank: 2, UserName: "Bilal", IsCurrent: true, BestStreak: 2, Completed: 2, Due: 2, Percent: 100, ProgressPct: 100},
+		},
+	})
+	if err != nil {
+		t.Fatalf("buildLeaderboardPDF() error = %v", err)
+	}
+	for _, want := range [][]byte{
+		[]byte("%PDF-1."),
+		[]byte("/BaseFont /utf8manrope"),
+		[]byte("/BaseFont /utf8manropeB"),
+		[]byte("/FontFile2"),
+	} {
+		if !bytes.Contains(pdf, want) {
+			t.Fatalf("PDF does not contain %q", want)
+		}
+	}
+	if bytes.Contains(pdf, []byte("/BaseFont /Helvetica")) {
+		t.Fatal("PDF contains Helvetica instead of embedded Manrope")
+	}
+	if got := leaderboardPDFFilename(leaderboardPageView{Period: "month", DateValue: "2026-05-01"}); got != "leaderboard-month-2026-05-01.pdf" {
+		t.Fatalf("leaderboardPDFFilename() = %q", got)
 	}
 }

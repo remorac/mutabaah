@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,6 +91,29 @@ func (h *LeaderboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ExportPDF writes the currently filtered leaderboard rankings as a PDF.
+func (h *LeaderboardHandler) ExportPDF(w http.ResponseWriter, r *http.Request) {
+	current, _ := apmw.UserFromContext(r.Context())
+
+	view, err := h.buildPage(r, current, "")
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
+
+	pdf, err := buildLeaderboardPDF(view)
+	if err != nil {
+		h.errs.ServerError(w, r, err)
+		return
+	}
+
+	filename := leaderboardPDFFilename(view)
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Length", strconv.Itoa(len(pdf)))
+	_, _ = w.Write(pdf)
+}
+
 func (h *LeaderboardHandler) buildPage(r *http.Request, current repository.User, csrfToken string) (leaderboardPageView, error) {
 	today := todayFor(h.now)
 	settings, err := h.settings.Get(r.Context())
@@ -158,13 +182,13 @@ func parseLeaderboardPeriod(kind, rawDate string, today time.Time, weekStartDay 
 	}
 
 	var start, end, prev, next time.Time
-	label := "Week"
+	label := "Weekly"
 	if periodKind == "month" {
 		start = time.Date(selected.Year(), selected.Month(), 1, 0, 0, 0, 0, time.UTC)
 		end = start.AddDate(0, 1, -1)
 		prev = start.AddDate(0, -1, 0)
 		next = start.AddDate(0, 1, 0)
-		label = "Month"
+		label = "Monthly"
 	} else {
 		start = services.WeekStartFor(selected, weekStartDay)
 		end = start.AddDate(0, 0, 6)

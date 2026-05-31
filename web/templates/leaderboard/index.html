@@ -8,14 +8,20 @@
       </h2>
       <p class="text-sm opacity-70">{{.PeriodLabel}} | <span class="whitespace-nowrap">{{.RangeLabel}}</span></p>
     </div>
-    <div class="join w-full rounded-sm shadow-sm sm:w-auto">
-      <a class="btn btn-sm join-item flex-1 border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.PreviousURL}}" aria-label="Previous period">
-        <i data-lucide="chevron-left" class="h-4 w-4"></i>
+    <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+      <a href="/leaderboard/export.pdf?period={{.Period}}&date={{.DateValue}}" class="btn btn-outline btn-sm w-full shadow-sm sm:w-auto">
+        <i data-lucide="download" class="h-4 w-4"></i>
+        Export PDF
       </a>
-      <a class="btn btn-sm join-item flex-[2] border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.CurrentURL}}">Current</a>
-      <a class="btn btn-sm join-item flex-1 border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.NextURL}}" aria-label="Next period">
-        <i data-lucide="chevron-right" class="h-4 w-4"></i>
-      </a>
+      <div class="join w-full rounded-sm shadow-sm sm:w-auto">
+        <a class="btn btn-sm join-item flex-1 border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.PreviousURL}}" aria-label="Previous period">
+          <i data-lucide="chevron-left" class="h-4 w-4"></i>
+        </a>
+        <a class="btn btn-sm join-item flex-[2] border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.CurrentURL}}">Current</a>
+        <a class="btn btn-sm join-item flex-1 border-base-200 bg-base-100 hover:bg-base-200 sm:flex-none" href="{{.NextURL}}" aria-label="Next period">
+          <i data-lucide="chevron-right" class="h-4 w-4"></i>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -25,8 +31,8 @@
         <label class="form-control min-w-0">
           <span class="label-text font-medium">Range</span>
           <select name="period" class="select select-bordered w-full">
-            <option value="week" {{if eq .Period "week"}}selected{{end}}>Week</option>
-            <option value="month" {{if eq .Period "month"}}selected{{end}}>Month</option>
+            <option value="week" {{if eq .Period "week"}}selected{{end}}>Weekly</option>
+            <option value="month" {{if eq .Period "month"}}selected{{end}}>Monthly</option>
           </select>
         </label>
         <label class="form-control min-w-0">

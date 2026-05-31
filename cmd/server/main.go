@@ -133,6 +133,7 @@ func main() {
 		r.Get("/reports", reportHandler.Show)
 		r.Get("/reports/export.pdf", reportHandler.ExportPDF)
 		r.Get("/leaderboard", leaderboardHandler.Show)
+		r.Get("/leaderboard/export.pdf", leaderboardHandler.ExportPDF)
 		r.Get("/settings/profile", profileHandler.Show)
 		r.Post("/settings/profile", profileHandler.ChangePassword)
 		r.Post("/settings/profile/picture", profileHandler.UploadPicture)
