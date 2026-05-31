@@ -162,4 +162,5 @@ type User struct {
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	AvatarPath   sql.NullString `json:"avatar_path"`
+	IsActive     bool           `json:"is_active"`
 }

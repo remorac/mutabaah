@@ -122,7 +122,7 @@ func (h *LeaderboardHandler) buildPage(r *http.Request, current repository.User,
 	}
 	period := parseLeaderboardPeriod(r.URL.Query().Get("period"), r.URL.Query().Get("date"), today, settings.WeekStartDay)
 
-	users, _, err := h.users.List(r.Context(), 0, 0)
+	users, err := h.users.ListActiveRegular(r.Context())
 	if err != nil {
 		return leaderboardPageView{}, err
 	}

@@ -10,6 +10,17 @@ import (
 	"database/sql"
 )
 
+const countActiveAdmins = `-- name: CountActiveAdmins :one
+SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = TRUE
+`
+
+func (q *Queries) CountActiveAdmins(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActiveAdmins)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countAdmins = `-- name: CountAdmins :one
 SELECT COUNT(*) FROM users WHERE role = 'admin'
 `
@@ -33,8 +44,8 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 }
 
 const createUser = `-- name: CreateUser :execlastid
-INSERT INTO users (email, password_hash, name, role)
-VALUES (?, ?, ?, ?)
+INSERT INTO users (email, password_hash, name, role, is_active)
+VALUES (?, ?, ?, ?, ?)
 `
 
 type CreateUserParams struct {
@@ -42,6 +53,7 @@ type CreateUserParams struct {
 	PasswordHash string    `json:"password_hash"`
 	Name         string    `json:"name"`
 	Role         UsersRole `json:"role"`
+	IsActive     bool      `json:"is_active"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
@@ -50,6 +62,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, 
 		arg.PasswordHash,
 		arg.Name,
 		arg.Role,
+		arg.IsActive,
 	)
 	if err != nil {
 		return 0, err
@@ -67,7 +80,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path, is_active
 FROM users
 WHERE email = ?
 `
@@ -84,12 +97,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AvatarPath,
+		&i.IsActive,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path, is_active
 FROM users
 WHERE id = ?
 `
@@ -106,12 +120,93 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AvatarPath,
+		&i.IsActive,
 	)
 	return i, err
 }
 
+const listActiveRegularUsers = `-- name: ListActiveRegularUsers :many
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path, is_active
+FROM users
+WHERE is_active = TRUE AND role = 'user'
+ORDER BY name ASC
+`
+
+func (q *Queries) ListActiveRegularUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveRegularUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.PasswordHash,
+			&i.Name,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.AvatarPath,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveUsers = `-- name: ListActiveUsers :many
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path, is_active
+FROM users
+WHERE is_active = TRUE
+ORDER BY name ASC
+`
+
+func (q *Queries) ListActiveUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.PasswordHash,
+			&i.Name,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.AvatarPath,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAllUsers = `-- name: ListAllUsers :many
-SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path, is_active
 FROM users
 ORDER BY name ASC
 `
@@ -134,6 +229,7 @@ func (q *Queries) ListAllUsers(ctx context.Context) ([]User, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.AvatarPath,
+			&i.IsActive,
 		); err != nil {
 			return nil, err
 		}
@@ -149,7 +245,7 @@ func (q *Queries) ListAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path
+SELECT id, email, password_hash, name, role, created_at, updated_at, avatar_path, is_active
 FROM users
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
@@ -178,6 +274,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.AvatarPath,
+			&i.IsActive,
 		); err != nil {
 			return nil, err
 		}
@@ -194,15 +291,16 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 
 const updateUser = `-- name: UpdateUser :exec
 UPDATE users
-SET email = ?, name = ?, role = ?
+SET email = ?, name = ?, role = ?, is_active = ?
 WHERE id = ?
 `
 
 type UpdateUserParams struct {
-	Email string    `json:"email"`
-	Name  string    `json:"name"`
-	Role  UsersRole `json:"role"`
-	ID    int64     `json:"id"`
+	Email    string    `json:"email"`
+	Name     string    `json:"name"`
+	Role     UsersRole `json:"role"`
+	IsActive bool      `json:"is_active"`
+	ID       int64     `json:"id"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
@@ -210,6 +308,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.Email,
 		arg.Name,
 		arg.Role,
+		arg.IsActive,
 		arg.ID,
 	)
 	return err

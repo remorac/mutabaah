@@ -97,9 +97,18 @@ func TestUsersIndexRendersAvatarAndDetailLinksWithoutRowActions(t *testing.T) {
 			Email:      "fatimah@example.com",
 			Name:       "Fatimah",
 			Role:       string(repository.UsersRoleUser),
+			IsActive:   true,
 			CreatedAt:  "2026-05-30",
 			DetailURL:  "/settings/users/2",
 			AvatarPath: "/static/avatars/thumb_2_avatar.jpg",
+		}, {
+			ID:        3,
+			Email:     "inactive@example.com",
+			Name:      "Inactive User",
+			Role:      string(repository.UsersRoleUser),
+			IsActive:  false,
+			CreatedAt: "2026-05-29",
+			DetailURL: "/settings/users/3",
 		}},
 		Page:       1,
 		TotalPages: 1,
@@ -116,6 +125,8 @@ func TestUsersIndexRendersAvatarAndDetailLinksWithoutRowActions(t *testing.T) {
 		`href="/settings/users/2"`,
 		`src="/static/avatars/thumb_2_avatar.jpg"`,
 		"fatimah@example.com",
+		"active",
+		"inactive",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("users index missing %q: %s", want, body)
@@ -144,6 +155,7 @@ func TestUserDetailRendersDataActionsAndReadOnlyPeriods(t *testing.T) {
 		Email:             "fatimah@example.com",
 		Name:              "Fatimah",
 		Role:              string(repository.UsersRoleUser),
+		IsActive:          true,
 		CreatedAt:         "2026-05-30",
 		ProfileAvatarPath: "/static/avatars/thumb_2_avatar.jpg",
 		EditURL:           "/settings/users/2/edit",
@@ -179,6 +191,7 @@ func TestUserDetailRendersDataActionsAndReadOnlyPeriods(t *testing.T) {
 		`href="/settings/users/2/edit"`,
 		`action="/settings/users/2/reset-data"`,
 		`action="/settings/users/2/impersonate"`,
+		"active",
 		"2026-05-01",
 		"2026-05-06",
 		"2026-05-28",
@@ -195,6 +208,38 @@ func TestUserDetailRendersDataActionsAndReadOnlyPeriods(t *testing.T) {
 	} {
 		if strings.Contains(body, unwanted) {
 			t.Fatalf("user detail has editable period UI %q: %s", unwanted, body)
+		}
+	}
+}
+
+func TestUserFormRendersActiveToggle(t *testing.T) {
+	tmpl, err := LoadTemplates("../../web/templates")
+	if err != nil {
+		t.Fatalf("LoadTemplates() error = %v", err)
+	}
+	view := userFormView{
+		BaseView:   BaseView{Title: "Edit User", CSRFToken: "csrf-token"},
+		FormAction: "/settings/users/2",
+		Email:      "fatimah@example.com",
+		Name:       "Fatimah",
+		Role:       string(repository.UsersRoleUser),
+		IsActive:   true,
+		Roles:      allRoles(),
+	}
+	rec := httptest.NewRecorder()
+
+	if err := tmpl.Render(rec, "settings/users/form.html", view); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		`name="is_active"`,
+		"class=\"toggle toggle-primary\" checked",
+		"Inactive users can't sign in or appear in reports.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("user form missing %q: %s", want, body)
 		}
 	}
 }

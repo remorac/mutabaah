@@ -55,6 +55,11 @@
           {{else}}
             <span class="badge badge-ghost badge-sm">user</span>
           {{end}}
+          {{if .IsActive}}
+            <span class="badge badge-success badge-sm">active</span>
+          {{else}}
+            <span class="badge badge-ghost badge-sm">inactive</span>
+          {{end}}
         </div>
         <p class="mt-1 break-words text-sm opacity-70">{{.Email}}</p>
         <div class="mt-3 flex items-center gap-2 text-xs opacity-70">

@@ -58,6 +58,7 @@ type userListRow struct {
 	Email      string
 	Name       string
 	Role       string
+	IsActive   bool
 	CreatedAt  string
 	IsSelf     bool
 	DetailURL  string
@@ -87,6 +88,7 @@ type userDetailView struct {
 	Email             string
 	Name              string
 	Role              string
+	IsActive          bool
 	CreatedAt         string
 	IsSelf            bool
 	ProfileAvatarPath string
@@ -107,6 +109,7 @@ type userFormView struct {
 	Email        string
 	Name         string
 	Role         string
+	IsActive     bool
 	Roles        []string
 	IsSelf       bool
 	CanDelete    bool
@@ -138,6 +141,7 @@ func (h *SettingsUsersHandler) List(w http.ResponseWriter, r *http.Request) {
 			Email:      u.Email,
 			Name:       u.Name,
 			Role:       string(u.Role),
+			IsActive:   u.IsActive,
 			CreatedAt:  u.CreatedAt.Format("2006-01-02"),
 			IsSelf:     u.ID == current.ID,
 			DetailURL:  "/settings/users/" + strconv.FormatInt(u.ID, 10),
@@ -207,13 +211,14 @@ func (h *SettingsUsersHandler) Show(w http.ResponseWriter, r *http.Request) {
 		Email:             u.Email,
 		Name:              u.Name,
 		Role:              string(u.Role),
+		IsActive:          u.IsActive,
 		CreatedAt:         u.CreatedAt.Format("2006-01-02"),
 		IsSelf:            u.ID == current.ID,
 		ProfileAvatarPath: avatarURL(u),
 		EditURL:           "/settings/users/" + idStr + "/edit",
 		ResetURL:          "/settings/users/" + idStr + "/reset-data",
 		ImpersonateURL:    "/settings/users/" + idStr + "/impersonate",
-		CanImpersonate:    u.ID != current.ID && !base.IsImpersonating,
+		CanImpersonate:    u.IsActive && u.ID != current.ID && !base.IsImpersonating,
 		ResetDates:        resetDateOptions(settings),
 		Periods:           rowsFromPeriods(periods),
 	}
@@ -235,6 +240,7 @@ func (h *SettingsUsersHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 		IsNew:      true,
 		FormAction: "/settings/users",
 		Role:       string(repository.UsersRoleUser),
+		IsActive:   true,
 		Roles:      allRoles(),
 	}
 	if err := h.tmpl.Render(w, "settings/users/form.html", view); err != nil {
@@ -266,6 +272,7 @@ func (h *SettingsUsersHandler) Create(w http.ResponseWriter, r *http.Request) {
 				Email:      input.Email,
 				Name:       input.Name,
 				Role:       input.Role,
+				IsActive:   input.IsActive,
 				Roles:      allRoles(),
 			})
 			return
@@ -307,6 +314,7 @@ func (h *SettingsUsersHandler) EditForm(w http.ResponseWriter, r *http.Request) 
 		Email:      u.Email,
 		Name:       u.Name,
 		Role:       string(u.Role),
+		IsActive:   u.IsActive,
 		Roles:      allRoles(),
 		IsSelf:     isSelf,
 		CanDelete:  !isSelf,
@@ -333,6 +341,7 @@ func (h *SettingsUsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	input := parseUserInput(r)
+	input.CurrentUserID = current.ID
 	if err := h.users.Update(r.Context(), id, input); err != nil {
 		var ve *services.ValidationError
 		if errors.As(err, &ve) {
@@ -345,6 +354,7 @@ func (h *SettingsUsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 				Email:      input.Email,
 				Name:       input.Name,
 				Role:       input.Role,
+				IsActive:   input.IsActive,
 				Roles:      allRoles(),
 				IsSelf:     id == current.ID,
 				CanDelete:  id != current.ID,
@@ -367,7 +377,8 @@ func (h *SettingsUsersHandler) Update(w http.ResponseWriter, r *http.Request) {
 				Roles:        allRoles(),
 				IsSelf:       id == current.ID,
 				CanDelete:    id != current.ID,
-				GeneralError: "Cannot demote the last admin.",
+				IsActive:     input.IsActive,
+				GeneralError: "Cannot remove the last active admin.",
 			})
 			return
 		}
@@ -496,6 +507,7 @@ func parseUserInput(r *http.Request) services.UserInput {
 		Name:     r.PostFormValue("name"),
 		Role:     r.PostFormValue("role"),
 		Password: r.PostFormValue("password"),
+		IsActive: r.PostFormValue("is_active") == "on" || r.PostFormValue("is_active") == "true",
 	}
 }
 

@@ -270,7 +270,7 @@ func (h *ReportHandler) buildReportData(r *http.Request) (reportData, error) {
 	var hasSelectedUser bool
 	canFilterUsers := current.Role == repository.UsersRoleAdmin
 	if canFilterUsers {
-		allUsers, _, err := h.users.List(r.Context(), 0, 0)
+		allUsers, err := h.users.ListActiveRegular(r.Context())
 		if err != nil {
 			return reportData{}, err
 		}
@@ -515,7 +515,18 @@ func selectedReportUsersForCurrent(current repository.User, all []repository.Use
 	if current.Role != repository.UsersRoleAdmin {
 		return []repository.User{current}, nil, true
 	}
-	return selectedReportUsers(all, raw, current.ID)
+	if len(raw) > 0 {
+		return selectedReportUsers(all, raw, 0)
+	}
+	return selectedReportUsers(all, userIDs(all), 0)
+}
+
+func userIDs(users []repository.User) []string {
+	ids := make([]string, 0, len(users))
+	for _, u := range users {
+		ids = append(ids, strconv.FormatInt(u.ID, 10))
+	}
+	return ids
 }
 
 func buildReportBars(periodStart, periodEnd, today time.Time, weekStartDay time.Weekday, sets []reportOccurrenceSet) ([]reportBarView, int, int) {

@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	CountActiveAdmins(ctx context.Context) (int64, error)
 	CountAdmins(ctx context.Context) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CreateMensesPeriod(ctx context.Context, arg CreateMensesPeriodParams) (int64, error)
@@ -32,7 +33,9 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	GetValidPasswordResetToken(ctx context.Context, tokenHash string) (PasswordResetToken, error)
+	ListActiveRegularUsers(ctx context.Context) ([]User, error)
 	ListActiveTasks(ctx context.Context) ([]Task, error)
+	ListActiveUsers(ctx context.Context) ([]User, error)
 	ListAllUsers(ctx context.Context) ([]User, error)
 	ListCompletionsForUserInRange(ctx context.Context, arg ListCompletionsForUserInRangeParams) ([]TaskCompletion, error)
 	ListCompletionsForUserOnDate(ctx context.Context, arg ListCompletionsForUserOnDateParams) ([]TaskCompletion, error)

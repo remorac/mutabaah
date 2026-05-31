@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/remorac/mutabaah/internal/repository"
 )
 
@@ -65,8 +67,8 @@ func (s *authImpersonationStore) GetUserByID(ctx context.Context, id int64) (rep
 
 func TestStartImpersonationRotatesSessionToTarget(t *testing.T) {
 	store := newAuthImpersonationStore()
-	admin := repository.User{ID: 1, Email: "admin@example.com", Name: "Admin", Role: repository.UsersRoleAdmin}
-	target := repository.User{ID: 2, Email: "user@example.com", Name: "User", Role: repository.UsersRoleUser}
+	admin := repository.User{ID: 1, Email: "admin@example.com", Name: "Admin", Role: repository.UsersRoleAdmin, IsActive: true}
+	target := repository.User{ID: 2, Email: "user@example.com", Name: "User", Role: repository.UsersRoleUser, IsActive: true}
 	store.users[admin.ID] = admin
 	store.users[target.ID] = target
 	store.sessions["old"] = repository.GetSessionRow{ID: "old", UserID: admin.ID, ExpiresAt: time.Now().Add(time.Hour)}
@@ -96,8 +98,8 @@ func TestStartImpersonationRotatesSessionToTarget(t *testing.T) {
 
 func TestStartImpersonationRejectsInvalidActorsAndTargets(t *testing.T) {
 	store := newAuthImpersonationStore()
-	admin := repository.User{ID: 1, Role: repository.UsersRoleAdmin}
-	user := repository.User{ID: 2, Role: repository.UsersRoleUser}
+	admin := repository.User{ID: 1, Role: repository.UsersRoleAdmin, IsActive: true}
+	user := repository.User{ID: 2, Role: repository.UsersRoleUser, IsActive: true}
 	store.users[admin.ID] = admin
 	auth := NewAuthService(store, "test-secret", 1)
 
@@ -112,10 +114,60 @@ func TestStartImpersonationRejectsInvalidActorsAndTargets(t *testing.T) {
 	}
 }
 
+func TestLoginRejectsInactiveUser(t *testing.T) {
+	store := newAuthImpersonationStore()
+	hash, err := bcrypt.GenerateFromPassword([]byte("password-123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	store.users[1] = repository.User{
+		ID:           1,
+		Email:        "inactive@example.com",
+		PasswordHash: string(hash),
+		Role:         repository.UsersRoleUser,
+		IsActive:     false,
+	}
+
+	auth := NewAuthService(store, "test-secret", 1)
+	if _, _, err := auth.Login(context.Background(), "inactive@example.com", "password-123"); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("Login() error = %v, want ErrInvalidCredentials", err)
+	}
+	if len(store.sessions) != 0 {
+		t.Fatalf("inactive login created sessions: %#v", store.sessions)
+	}
+}
+
+func TestLookupSessionDestroysInactiveUserSession(t *testing.T) {
+	store := newAuthImpersonationStore()
+	store.users[2] = repository.User{ID: 2, Role: repository.UsersRoleUser, IsActive: false}
+	store.sessions["inactive"] = repository.GetSessionRow{ID: "inactive", UserID: 2, ExpiresAt: time.Now().Add(time.Hour)}
+
+	auth := NewAuthService(store, "test-secret", 1)
+	if _, err := auth.LookupSessionInfo(context.Background(), "inactive"); !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("LookupSessionInfo() error = %v, want ErrSessionNotFound", err)
+	}
+	if _, ok := store.sessions["inactive"]; ok {
+		t.Fatalf("inactive user's session was not destroyed")
+	}
+}
+
+func TestStartImpersonationRejectsInactiveTarget(t *testing.T) {
+	store := newAuthImpersonationStore()
+	admin := repository.User{ID: 1, Role: repository.UsersRoleAdmin, IsActive: true}
+	target := repository.User{ID: 2, Role: repository.UsersRoleUser, IsActive: false}
+	store.users[admin.ID] = admin
+	store.users[target.ID] = target
+	auth := NewAuthService(store, "test-secret", 1)
+
+	if _, _, err := auth.StartImpersonation(context.Background(), "old", admin, target.ID); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("StartImpersonation() error = %v, want ErrUserNotFound", err)
+	}
+}
+
 func TestStopImpersonationRestoresAdminSession(t *testing.T) {
 	store := newAuthImpersonationStore()
-	admin := repository.User{ID: 1, Role: repository.UsersRoleAdmin}
-	target := repository.User{ID: 2, Role: repository.UsersRoleUser}
+	admin := repository.User{ID: 1, Role: repository.UsersRoleAdmin, IsActive: true}
+	target := repository.User{ID: 2, Role: repository.UsersRoleUser, IsActive: true}
 	store.users[admin.ID] = admin
 	store.users[target.ID] = target
 	store.sessions["imp"] = repository.GetSessionRow{
@@ -147,7 +199,7 @@ func TestStopImpersonationRestoresAdminSession(t *testing.T) {
 
 func TestStopImpersonationDestroysSessionWhenAdminInvalid(t *testing.T) {
 	store := newAuthImpersonationStore()
-	target := repository.User{ID: 2, Role: repository.UsersRoleUser}
+	target := repository.User{ID: 2, Role: repository.UsersRoleUser, IsActive: true}
 	store.users[target.ID] = target
 	store.sessions["imp"] = repository.GetSessionRow{
 		ID:                 "imp",
@@ -167,7 +219,7 @@ func TestStopImpersonationDestroysSessionWhenAdminInvalid(t *testing.T) {
 
 func TestStopImpersonationRejectsRegularSession(t *testing.T) {
 	store := newAuthImpersonationStore()
-	admin := repository.User{ID: 1, Role: repository.UsersRoleAdmin}
+	admin := repository.User{ID: 1, Role: repository.UsersRoleAdmin, IsActive: true}
 	store.users[admin.ID] = admin
 	store.sessions["regular"] = repository.GetSessionRow{ID: "regular", UserID: admin.ID, ExpiresAt: time.Now().Add(time.Hour)}
 

@@ -101,7 +101,7 @@ func RequireAdmin(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		if user.Role != repository.UsersRoleAdmin {
+		if user.Role != repository.UsersRoleAdmin || !user.IsActive {
 			ForbiddenHandler(w, r)
 			return
 		}

@@ -57,6 +57,9 @@ func (s *PasswordResetService) RequestReset(ctx context.Context, email string) e
 		}
 		return err
 	}
+	if !user.IsActive {
+		return nil
+	}
 	token, err := randomToken(32)
 	if err != nil {
 		return err

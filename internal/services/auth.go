@@ -86,6 +86,9 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (token 
 		}
 		return "", repository.User{}, err
 	}
+	if !user.IsActive {
+		return "", repository.User{}, ErrInvalidCredentials
+	}
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		return "", repository.User{}, ErrInvalidCredentials
 	}
@@ -141,6 +144,10 @@ func (s *AuthService) LookupSessionInfo(ctx context.Context, token string) (Sess
 		}
 		return SessionInfo{}, err
 	}
+	if !user.IsActive {
+		_ = s.Logout(ctx, token)
+		return SessionInfo{}, ErrSessionNotFound
+	}
 	info := SessionInfo{User: user}
 	if sess.ImpersonatorUserID.Valid {
 		impersonator, err := s.q.GetUserByID(ctx, sess.ImpersonatorUserID.Int64)
@@ -149,6 +156,10 @@ func (s *AuthService) LookupSessionInfo(ctx context.Context, token string) (Sess
 				return SessionInfo{}, ErrSessionNotFound
 			}
 			return SessionInfo{}, err
+		}
+		if !impersonator.IsActive || impersonator.Role != repository.UsersRoleAdmin {
+			_ = s.Logout(ctx, token)
+			return SessionInfo{}, ErrSessionNotFound
 		}
 		info.Impersonator = impersonator
 		info.Impersonating = true
@@ -159,7 +170,7 @@ func (s *AuthService) LookupSessionInfo(ctx context.Context, token string) (Sess
 // StartImpersonation rotates the current admin session into a session for the
 // target user. The returned token must replace the browser's session cookie.
 func (s *AuthService) StartImpersonation(ctx context.Context, currentSessionID string, admin repository.User, targetUserID int64) (string, repository.User, error) {
-	if admin.Role != repository.UsersRoleAdmin {
+	if admin.Role != repository.UsersRoleAdmin || !admin.IsActive {
 		return "", repository.User{}, ErrImpersonationForbidden
 	}
 	if admin.ID == targetUserID {
@@ -171,6 +182,9 @@ func (s *AuthService) StartImpersonation(ctx context.Context, currentSessionID s
 			return "", repository.User{}, ErrUserNotFound
 		}
 		return "", repository.User{}, err
+	}
+	if !target.IsActive {
+		return "", repository.User{}, ErrUserNotFound
 	}
 	token, err := randomToken(32)
 	if err != nil {
@@ -215,7 +229,7 @@ func (s *AuthService) StopImpersonation(ctx context.Context, currentSessionID st
 		}
 		return "", repository.User{}, err
 	}
-	if admin.Role != repository.UsersRoleAdmin {
+	if admin.Role != repository.UsersRoleAdmin || !admin.IsActive {
 		_ = s.Logout(ctx, currentSessionID)
 		return "", repository.User{}, ErrImpersonatorInvalid
 	}

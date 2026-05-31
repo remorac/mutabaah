@@ -65,6 +65,15 @@
         {{with index .Errors "role"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
       </label>
 
+      <label class="flex items-center justify-between gap-4 rounded-lg border border-base-200 p-4">
+        <span>
+          <span class="label-text font-medium block">Active</span>
+          <span class="text-xs opacity-60">Inactive users can't sign in or appear in reports.</span>
+          {{with index .Errors "is_active"}}<span class="text-error text-xs mt-1 block">{{.}}</span>{{end}}
+        </span>
+        <input type="checkbox" name="is_active" class="toggle toggle-primary" {{if .IsActive}}checked{{end}} />
+      </label>
+
       <label class="block">
         <span class="label-text font-medium block mb-2">
           Password

@@ -26,10 +26,12 @@ const MinPasswordLength = 8
 // UserInput is the payload accepted by user create/update. Password is required
 // on Create and optional on Update — leave blank to keep the existing hash.
 type UserInput struct {
-	Email    string
-	Name     string
-	Role     string
-	Password string
+	Email         string
+	Name          string
+	Role          string
+	Password      string
+	IsActive      bool
+	CurrentUserID int64
 }
 
 // AppLocation is the single timezone the app evaluates "today" in.
@@ -44,10 +46,28 @@ var AppLocation = func() *time.Location {
 // UserAdminService implements admin-side user CRUD plus the self-service
 // password change. Validation lives here so handlers can stay thin.
 type UserAdminService struct {
-	q *repository.Queries
+	q userAdminStore
 }
 
-func NewUserAdminService(q *repository.Queries) *UserAdminService {
+type userAdminStore interface {
+	CountActiveAdmins(ctx context.Context) (int64, error)
+	CountUsers(ctx context.Context) (int64, error)
+	CreateUser(ctx context.Context, arg repository.CreateUserParams) (int64, error)
+	DeleteCompletionsForUserOnDates(ctx context.Context, arg repository.DeleteCompletionsForUserOnDatesParams) error
+	DeleteUser(ctx context.Context, id int64) error
+	DeleteUserSessions(ctx context.Context, arg repository.DeleteUserSessionsParams) error
+	GetUserByEmail(ctx context.Context, email string) (repository.User, error)
+	GetUserByID(ctx context.Context, id int64) (repository.User, error)
+	ListActiveRegularUsers(ctx context.Context) ([]repository.User, error)
+	ListActiveUsers(ctx context.Context) ([]repository.User, error)
+	ListAllUsers(ctx context.Context) ([]repository.User, error)
+	ListUsers(ctx context.Context, arg repository.ListUsersParams) ([]repository.User, error)
+	UpdateUser(ctx context.Context, arg repository.UpdateUserParams) error
+	UpdateUserAvatar(ctx context.Context, arg repository.UpdateUserAvatarParams) error
+	UpdateUserPassword(ctx context.Context, arg repository.UpdateUserPasswordParams) error
+}
+
+func NewUserAdminService(q userAdminStore) *UserAdminService {
 	return &UserAdminService{q: q}
 }
 
@@ -65,6 +85,16 @@ func (s *UserAdminService) List(ctx context.Context, limit, offset int32) ([]rep
 	}
 	users, err := s.q.ListUsers(ctx, repository.ListUsersParams{Limit: limit, Offset: offset})
 	return users, total, err
+}
+
+// ListActive returns active users only for user-facing aggregate views.
+func (s *UserAdminService) ListActive(ctx context.Context) ([]repository.User, error) {
+	return s.q.ListActiveUsers(ctx)
+}
+
+// ListActiveRegular returns active non-admin users for reports and leaderboard.
+func (s *UserAdminService) ListActiveRegular(ctx context.Context) ([]repository.User, error) {
+	return s.q.ListActiveRegularUsers(ctx)
 }
 
 // Get fetches a single user by ID.
@@ -97,6 +127,7 @@ func (s *UserAdminService) Create(ctx context.Context, in UserInput) (int64, err
 		PasswordHash: string(hash),
 		Name:         name,
 		Role:         role,
+		IsActive:     in.IsActive,
 	})
 }
 
@@ -119,8 +150,11 @@ func (s *UserAdminService) Update(ctx context.Context, id int64, in UserInput) e
 	if len(verrs) > 0 {
 		return &ValidationError{Fields: verrs}
 	}
-	if existing.Role == repository.UsersRoleAdmin && role != repository.UsersRoleAdmin {
-		admins, err := s.q.CountAdmins(ctx)
+	if existing.ID == in.CurrentUserID && existing.IsActive && !in.IsActive {
+		return &ValidationError{Fields: map[string]string{"is_active": "You can't deactivate your own account."}}
+	}
+	if existing.Role == repository.UsersRoleAdmin && existing.IsActive && (role != repository.UsersRoleAdmin || !in.IsActive) {
+		admins, err := s.q.CountActiveAdmins(ctx)
 		if err != nil {
 			return err
 		}
@@ -129,12 +163,21 @@ func (s *UserAdminService) Update(ctx context.Context, id int64, in UserInput) e
 		}
 	}
 	if err := s.q.UpdateUser(ctx, repository.UpdateUserParams{
-		Email: email,
-		Name:  name,
-		Role:  role,
-		ID:    id,
+		Email:    email,
+		Name:     name,
+		Role:     role,
+		IsActive: in.IsActive,
+		ID:       id,
 	}); err != nil {
 		return err
+	}
+	if existing.IsActive && !in.IsActive {
+		if err := s.q.DeleteUserSessions(ctx, repository.DeleteUserSessionsParams{
+			UserID:             id,
+			ImpersonatorUserID: sql.NullInt64{Int64: id, Valid: true},
+		}); err != nil {
+			return err
+		}
 	}
 	if in.Password != "" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
@@ -201,11 +244,11 @@ func (s *UserAdminService) Delete(ctx context.Context, id int64) error {
 		return err
 	}
 	if u.Role == repository.UsersRoleAdmin {
-		admins, err := s.q.CountAdmins(ctx)
+		admins, err := s.q.CountActiveAdmins(ctx)
 		if err != nil {
 			return err
 		}
-		if admins <= 1 {
+		if u.IsActive && admins <= 1 {
 			return ErrLastAdmin
 		}
 	}

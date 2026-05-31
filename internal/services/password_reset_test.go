@@ -96,7 +96,7 @@ func (m *fakeMailer) SendPasswordReset(ctx context.Context, to, resetURL string)
 
 func TestRequestResetCreatesHashedTokenAndEmailsLink(t *testing.T) {
 	store := newFakeResetStore()
-	store.users["a@example.com"] = repository.User{ID: 42, Email: "a@example.com"}
+	store.users["a@example.com"] = repository.User{ID: 42, Email: "a@example.com", IsActive: true}
 	mailer := &fakeMailer{}
 	svc := NewPasswordResetService(store, mailer, "https://tracker.example.com")
 
@@ -135,9 +135,26 @@ func TestRequestResetUnknownEmailIsGeneric(t *testing.T) {
 	}
 }
 
+func TestRequestResetInactiveUserIsGeneric(t *testing.T) {
+	store := newFakeResetStore()
+	store.users["inactive@example.com"] = repository.User{ID: 42, Email: "inactive@example.com", IsActive: false}
+	mailer := &fakeMailer{}
+	svc := NewPasswordResetService(store, mailer, "https://tracker.example.com")
+
+	if err := svc.RequestReset(context.Background(), "inactive@example.com"); err != nil {
+		t.Fatalf("RequestReset() error = %v", err)
+	}
+	if mailer.url != "" {
+		t.Fatalf("mailer sent reset for inactive user: %s", mailer.url)
+	}
+	if len(store.tokens) != 0 {
+		t.Fatalf("reset token created for inactive user: %#v", store.tokens)
+	}
+}
+
 func TestRequestResetReturnsMailerErrors(t *testing.T) {
 	store := newFakeResetStore()
-	store.users["a@example.com"] = repository.User{ID: 42, Email: "a@example.com"}
+	store.users["a@example.com"] = repository.User{ID: 42, Email: "a@example.com", IsActive: true}
 	mailer := &fakeMailer{err: errors.New("smtp down")}
 	svc := NewPasswordResetService(store, mailer, "https://tracker.example.com")
 

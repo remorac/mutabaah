@@ -21,6 +21,7 @@
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Name</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Email</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Role</th>
+          <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Status</th>
           <th class="text-xs font-semibold uppercase tracking-wide opacity-50">Joined</th>
         </tr>
       </thead>
@@ -52,6 +53,13 @@
               <span class="badge badge-primary badge-sm">admin</span>
             {{else}}
               <span class="badge badge-ghost badge-sm">user</span>
+            {{end}}
+          </td>
+          <td>
+            {{if .IsActive}}
+              <span class="badge badge-success badge-sm">active</span>
+            {{else}}
+              <span class="badge badge-ghost badge-sm">inactive</span>
             {{end}}
           </td>
           <td class="text-xs opacity-70">{{.CreatedAt}}</td>
@@ -90,6 +98,11 @@
             <span class="badge badge-primary badge-sm">admin</span>
           {{else}}
             <span class="badge badge-ghost badge-sm">user</span>
+          {{end}}
+          {{if .IsActive}}
+            <span class="badge badge-success badge-sm mt-1">active</span>
+          {{else}}
+            <span class="badge badge-ghost badge-sm mt-1">inactive</span>
           {{end}}
         </div>
       </div>

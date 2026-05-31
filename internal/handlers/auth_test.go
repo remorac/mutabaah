@@ -75,7 +75,7 @@ func newAuthTestHandler(t *testing.T) (*AuthHandler, *authTestStore, *authTestMa
 	if err != nil {
 		t.Fatalf("LoadTemplates() error = %v", err)
 	}
-	store := &authTestStore{user: repository.User{ID: 1, Email: "a@example.com"}}
+	store := &authTestStore{user: repository.User{ID: 1, Email: "a@example.com", IsActive: true}}
 	mailer := &authTestMailer{}
 	resets := services.NewPasswordResetService(store, mailer, "https://tracker.example.com")
 	return NewAuthHandler(services.NewAuthService(nil, "test-secret-long-enough", 1), resets, tmpl, nilLogger(), false), store, mailer

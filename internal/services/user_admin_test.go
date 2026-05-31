@@ -1,9 +1,211 @@
 package services
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/remorac/mutabaah/internal/repository"
 )
+
+type fakeUserAdminStore struct {
+	users              map[int64]repository.User
+	usersByEmail       map[string]repository.User
+	activeAdminCount   int64
+	updated            repository.UpdateUserParams
+	updateWasCalled    bool
+	deletedSessionsFor int64
+}
+
+func newFakeUserAdminStore() *fakeUserAdminStore {
+	return &fakeUserAdminStore{
+		users:        map[int64]repository.User{},
+		usersByEmail: map[string]repository.User{},
+	}
+}
+
+func (s *fakeUserAdminStore) CountActiveAdmins(ctx context.Context) (int64, error) {
+	return s.activeAdminCount, nil
+}
+
+func (s *fakeUserAdminStore) CountUsers(ctx context.Context) (int64, error) {
+	return int64(len(s.users)), nil
+}
+
+func (s *fakeUserAdminStore) CreateUser(ctx context.Context, arg repository.CreateUserParams) (int64, error) {
+	return 1, nil
+}
+
+func (s *fakeUserAdminStore) DeleteCompletionsForUserOnDates(ctx context.Context, arg repository.DeleteCompletionsForUserOnDatesParams) error {
+	return nil
+}
+
+func (s *fakeUserAdminStore) DeleteUser(ctx context.Context, id int64) error {
+	return nil
+}
+
+func (s *fakeUserAdminStore) DeleteUserSessions(ctx context.Context, arg repository.DeleteUserSessionsParams) error {
+	s.deletedSessionsFor = arg.UserID
+	return nil
+}
+
+func (s *fakeUserAdminStore) GetUserByEmail(ctx context.Context, email string) (repository.User, error) {
+	if u, ok := s.usersByEmail[email]; ok {
+		return u, nil
+	}
+	return repository.User{}, sql.ErrNoRows
+}
+
+func (s *fakeUserAdminStore) GetUserByID(ctx context.Context, id int64) (repository.User, error) {
+	if u, ok := s.users[id]; ok {
+		return u, nil
+	}
+	return repository.User{}, sql.ErrNoRows
+}
+
+func (s *fakeUserAdminStore) ListActiveUsers(ctx context.Context) ([]repository.User, error) {
+	var users []repository.User
+	for _, u := range s.users {
+		if u.IsActive {
+			users = append(users, u)
+		}
+	}
+	return users, nil
+}
+
+func (s *fakeUserAdminStore) ListActiveRegularUsers(ctx context.Context) ([]repository.User, error) {
+	var users []repository.User
+	for _, u := range s.users {
+		if u.IsActive && u.Role == repository.UsersRoleUser {
+			users = append(users, u)
+		}
+	}
+	return users, nil
+}
+
+func (s *fakeUserAdminStore) ListAllUsers(ctx context.Context) ([]repository.User, error) {
+	var users []repository.User
+	for _, u := range s.users {
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+func (s *fakeUserAdminStore) ListUsers(ctx context.Context, arg repository.ListUsersParams) ([]repository.User, error) {
+	return s.ListAllUsers(ctx)
+}
+
+func (s *fakeUserAdminStore) UpdateUser(ctx context.Context, arg repository.UpdateUserParams) error {
+	s.updated = arg
+	s.updateWasCalled = true
+	return nil
+}
+
+func (s *fakeUserAdminStore) UpdateUserAvatar(ctx context.Context, arg repository.UpdateUserAvatarParams) error {
+	return nil
+}
+
+func (s *fakeUserAdminStore) UpdateUserPassword(ctx context.Context, arg repository.UpdateUserPasswordParams) error {
+	return nil
+}
+
+func TestUpdateRejectsSelfDeactivation(t *testing.T) {
+	store := newFakeUserAdminStore()
+	store.users[1] = repository.User{ID: 1, Email: "admin@example.com", Name: "Admin", Role: repository.UsersRoleAdmin, IsActive: true}
+	store.activeAdminCount = 2
+	svc := NewUserAdminService(store)
+
+	err := svc.Update(context.Background(), 1, UserInput{
+		Email:         "admin@example.com",
+		Name:          "Admin",
+		Role:          string(repository.UsersRoleAdmin),
+		IsActive:      false,
+		CurrentUserID: 1,
+	})
+
+	var ve *ValidationError
+	if !errors.As(err, &ve) || ve.Fields["is_active"] == "" {
+		t.Fatalf("Update() error = %v, want is_active validation error", err)
+	}
+	if store.updateWasCalled {
+		t.Fatalf("inactive self update should not be persisted")
+	}
+}
+
+func TestUpdateRejectsRemovingLastActiveAdmin(t *testing.T) {
+	store := newFakeUserAdminStore()
+	store.users[1] = repository.User{ID: 1, Email: "admin@example.com", Name: "Admin", Role: repository.UsersRoleAdmin, IsActive: true}
+	store.activeAdminCount = 1
+	svc := NewUserAdminService(store)
+
+	err := svc.Update(context.Background(), 1, UserInput{
+		Email:         "admin@example.com",
+		Name:          "Admin",
+		Role:          string(repository.UsersRoleUser),
+		IsActive:      true,
+		CurrentUserID: 2,
+	})
+
+	if !errors.Is(err, ErrLastAdmin) {
+		t.Fatalf("Update() error = %v, want ErrLastAdmin", err)
+	}
+}
+
+func TestUpdateDeactivatingUserRevokesSessions(t *testing.T) {
+	store := newFakeUserAdminStore()
+	store.users[2] = repository.User{ID: 2, Email: "user@example.com", Name: "User", Role: repository.UsersRoleUser, IsActive: true}
+	store.activeAdminCount = 1
+	svc := NewUserAdminService(store)
+
+	if err := svc.Update(context.Background(), 2, UserInput{
+		Email:         "user@example.com",
+		Name:          "User",
+		Role:          string(repository.UsersRoleUser),
+		IsActive:      false,
+		CurrentUserID: 1,
+	}); err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if !store.updateWasCalled || store.updated.IsActive {
+		t.Fatalf("updated = %+v, want inactive update", store.updated)
+	}
+	if store.deletedSessionsFor != 2 {
+		t.Fatalf("deletedSessionsFor = %d, want 2", store.deletedSessionsFor)
+	}
+}
+
+func TestListActiveOnlyReturnsActiveUsers(t *testing.T) {
+	store := newFakeUserAdminStore()
+	store.users[1] = repository.User{ID: 1, Name: "Active", IsActive: true}
+	store.users[2] = repository.User{ID: 2, Name: "Inactive", IsActive: false}
+	svc := NewUserAdminService(store)
+
+	users, err := svc.ListActive(context.Background())
+	if err != nil {
+		t.Fatalf("ListActive() error = %v", err)
+	}
+	if len(users) != 1 || users[0].ID != 1 {
+		t.Fatalf("ListActive() = %#v, want only active user", users)
+	}
+}
+
+func TestListActiveRegularExcludesAdminsAndInactiveUsers(t *testing.T) {
+	store := newFakeUserAdminStore()
+	store.users[1] = repository.User{ID: 1, Name: "Admin", Role: repository.UsersRoleAdmin, IsActive: true}
+	store.users[2] = repository.User{ID: 2, Name: "Active User", Role: repository.UsersRoleUser, IsActive: true}
+	store.users[3] = repository.User{ID: 3, Name: "Inactive User", Role: repository.UsersRoleUser, IsActive: false}
+	svc := NewUserAdminService(store)
+
+	users, err := svc.ListActiveRegular(context.Background())
+	if err != nil {
+		t.Fatalf("ListActiveRegular() error = %v", err)
+	}
+	if len(users) != 1 || users[0].ID != 2 {
+		t.Fatalf("ListActiveRegular() = %#v, want only active regular user", users)
+	}
+}
 
 func TestWeekDatesForHistory(t *testing.T) {
 	tests := []struct {

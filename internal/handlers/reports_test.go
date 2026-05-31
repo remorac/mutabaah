@@ -331,32 +331,32 @@ func TestSelectedReportUsers(t *testing.T) {
 func TestSelectedReportUsersForCurrent_AdminHonorsFilter(t *testing.T) {
 	current := repository.User{ID: 1, Name: "Amina", Role: repository.UsersRoleAdmin}
 	users := []repository.User{
-		current,
 		{ID: 2, Name: "Bilal", Role: repository.UsersRoleUser},
+		{ID: 3, Name: "Citra", Role: repository.UsersRoleUser},
 	}
 
 	selected, options, hasSelected := selectedReportUsersForCurrent(current, users, []string{"2", "1"})
-	if !hasSelected || len(selected) != 2 || selected[0].ID != 1 || selected[1].ID != 2 {
-		t.Fatalf("selected = %+v hasSelected=%v, want both admin-selected users", selected, hasSelected)
+	if !hasSelected || len(selected) != 1 || selected[0].ID != 2 {
+		t.Fatalf("selected = %+v hasSelected=%v, want only allowed regular user Bilal", selected, hasSelected)
 	}
-	if len(options) != 2 || !options[0].Selected || !options[1].Selected {
-		t.Fatalf("options = %+v, want both users selected", options)
+	if len(options) != 2 || !options[0].Selected || options[1].Selected {
+		t.Fatalf("options = %+v, want only Bilal selected", options)
 	}
 }
 
-func TestSelectedReportUsersForCurrent_AdminFallsBackToSelf(t *testing.T) {
+func TestSelectedReportUsersForCurrent_AdminDefaultsToAllRegularUsers(t *testing.T) {
 	current := repository.User{ID: 1, Name: "Amina", Role: repository.UsersRoleAdmin}
 	users := []repository.User{
-		current,
 		{ID: 2, Name: "Bilal", Role: repository.UsersRoleUser},
+		{ID: 3, Name: "Citra", Role: repository.UsersRoleUser},
 	}
 
 	selected, options, hasSelected := selectedReportUsersForCurrent(current, users, nil)
-	if !hasSelected || len(selected) != 1 || selected[0].ID != 1 {
-		t.Fatalf("selected = %+v hasSelected=%v, want admin fallback Amina", selected, hasSelected)
+	if !hasSelected || len(selected) != 2 || selected[0].ID != 2 || selected[1].ID != 3 {
+		t.Fatalf("selected = %+v hasSelected=%v, want all regular users", selected, hasSelected)
 	}
-	if len(options) != 2 || !options[0].Selected || options[1].Selected {
-		t.Fatalf("options = %+v, want Amina selected", options)
+	if len(options) != 2 || !options[0].Selected || !options[1].Selected {
+		t.Fatalf("options = %+v, want all regular users selected", options)
 	}
 }
 

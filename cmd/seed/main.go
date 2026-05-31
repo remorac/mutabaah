@@ -115,6 +115,7 @@ func ensureAdmin(ctx context.Context, q *repository.Queries, email, password, na
 		PasswordHash: string(hash),
 		Name:         name,
 		Role:         repository.UsersRoleAdmin,
+		IsActive:     true,
 	})
 }
 
