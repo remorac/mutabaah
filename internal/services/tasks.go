@@ -203,11 +203,15 @@ func buildOccurrences(tasks []repository.Task, completions []repository.TaskComp
 	for _, t := range tasks {
 		for _, d := range occurrenceDates(t, from, to) {
 			occ := TaskOccurrence{Task: t, DueDate: d}
-			if c, ok := completionByKey[key{t.ID, d.Format("2006-01-02")}]; ok {
+			// Exempt-during-menses takes precedence over an existing completion:
+			// once a period covers the day, an already-filled exempt task is
+			// ignored. The completion row stays in the DB and reappears if the
+			// period is later removed.
+			if t.ExemptDuringMenses && dateInAnyPeriod(d, periods) {
+				occ.Status = StatusExempt
+			} else if c, ok := completionByKey[key{t.ID, d.Format("2006-01-02")}]; ok {
 				occ.Status = StatusCompleted
 				occ.CompletedAt = c.CompletedAt
-			} else if t.ExemptDuringMenses && dateInAnyPeriod(d, periods) {
-				occ.Status = StatusExempt
 			} else if d.Before(today) {
 				occ.Status = StatusMissed
 			} else {

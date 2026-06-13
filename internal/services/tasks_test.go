@@ -125,6 +125,50 @@ func TestBuildOccurrences_StatusAssignment(t *testing.T) {
 	}
 }
 
+func TestBuildOccurrences_ExemptOverridesCompletionInPeriod(t *testing.T) {
+	today := date(2026, 5, 30)
+	// Exempt task, completed on the 25th; a period later entered covers 24th-26th.
+	exempt := task(1, "dhikr", repository.TasksFrequencyDaily, date(2026, 5, 24), nil)
+	exempt.ExemptDuringMenses = true
+	// Non-exempt task, also completed on the 25th, inside the same period.
+	regular := task(2, "salah", repository.TasksFrequencyDaily, date(2026, 5, 24), nil)
+	completions := []repository.TaskCompletion{
+		{TaskID: 1, UserID: 1, DueDate: date(2026, 5, 25), CompletedAt: date(2026, 5, 25)},
+		{TaskID: 1, UserID: 1, DueDate: date(2026, 5, 27), CompletedAt: date(2026, 5, 27)},
+		{TaskID: 2, UserID: 1, DueDate: date(2026, 5, 25), CompletedAt: date(2026, 5, 25)},
+	}
+	periods := []repository.MensesPeriod{
+		{StartDate: date(2026, 5, 24), EndDate: sql.NullTime{Time: date(2026, 5, 26), Valid: true}},
+	}
+	got := buildOccurrences([]repository.Task{exempt, regular}, completions, periods, today, date(2026, 5, 25), date(2026, 5, 27))
+
+	type want struct {
+		taskID int64
+		day    string
+		status OccurrenceStatus
+	}
+	wants := []want{
+		{1, "2026-05-25", StatusExempt},    // exempt + completed + in period -> exempt
+		{1, "2026-05-27", StatusCompleted}, // exempt + completed, outside period -> completed
+		{2, "2026-05-25", StatusCompleted}, // non-exempt completed in period -> completed
+	}
+	for _, w := range wants {
+		var found *TaskOccurrence
+		for i := range got {
+			if got[i].Task.ID == w.taskID && got[i].DueDate.Format("2006-01-02") == w.day {
+				found = &got[i]
+				break
+			}
+		}
+		if found == nil {
+			t.Fatalf("no occurrence for task %d on %s", w.taskID, w.day)
+		}
+		if found.Status != w.status {
+			t.Errorf("task %d on %s: got %s, want %s", w.taskID, w.day, found.Status, w.status)
+		}
+	}
+}
+
 func TestBuildOccurrences_SortedByDateThenTitle(t *testing.T) {
 	today := date(2026, 5, 25)
 	a := task(1, "zikr", repository.TasksFrequencyDaily, date(2026, 5, 25), nil)
