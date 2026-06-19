@@ -138,6 +138,8 @@ func main() {
 		r.Post("/settings/profile", profileHandler.ChangePassword)
 		r.Post("/settings/profile/picture", profileHandler.UploadPicture)
 		r.Post("/settings/periods", profileHandler.CreatePeriod)
+		r.Get("/settings/periods/{id}/edit", profileHandler.EditPeriod)
+		r.Post("/settings/periods/{id}", profileHandler.UpdatePeriod)
 		r.Post("/settings/periods/{id}/delete", profileHandler.DeletePeriod)
 		r.Post("/impersonation/stop", authHandler.StopImpersonation)
 	})

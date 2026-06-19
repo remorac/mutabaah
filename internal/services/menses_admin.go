@@ -21,13 +21,23 @@ type MensesPeriodInput struct {
 	EndDate   string // YYYY-MM-DD or "" (ongoing)
 }
 
+// mensesStore is the subset of repository.Queries used by MensesAdminService.
+// Defining it as an interface keeps the service unit-testable with a fake.
+type mensesStore interface {
+	ListMensesPeriodsForUser(ctx context.Context, userID int64) ([]repository.MensesPeriod, error)
+	GetMensesPeriod(ctx context.Context, arg repository.GetMensesPeriodParams) (repository.MensesPeriod, error)
+	CreateMensesPeriod(ctx context.Context, arg repository.CreateMensesPeriodParams) (int64, error)
+	UpdateMensesPeriod(ctx context.Context, arg repository.UpdateMensesPeriodParams) error
+	DeleteMensesPeriod(ctx context.Context, arg repository.DeleteMensesPeriodParams) error
+}
+
 // MensesAdminService implements per-user menses-period CRUD. Every operation
 // is scoped to the supplied userID so users cannot touch others' records.
 type MensesAdminService struct {
-	q *repository.Queries
+	q mensesStore
 }
 
-func NewMensesAdminService(q *repository.Queries) *MensesAdminService {
+func NewMensesAdminService(q mensesStore) *MensesAdminService {
 	return &MensesAdminService{q: q}
 }
 

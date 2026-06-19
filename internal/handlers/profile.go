@@ -62,6 +62,9 @@ type profileView struct {
 	PeriodErrors map[string]string
 	NewStart     string
 	NewEnd       string
+	// EditingID is the period row currently rendered as an inline edit form;
+	// 0 means none (the create/display state).
+	EditingID int64
 }
 
 // Show renders the profile page (GET).
@@ -151,7 +154,7 @@ func (h *ProfileHandler) CreatePeriod(w http.ResponseWriter, r *http.Request) {
 			if isPartialRequest(r) {
 				// HTMX does not swap 4xx responses by default, so return 200
 				// for validation partials and let the inline errors render.
-				h.renderPeriodsSection(w, r, user, token, ve.Fields, input.StartDate, input.EndDate, http.StatusOK)
+				h.renderPeriodsSection(w, r, user, token, ve.Fields, input.StartDate, input.EndDate, 0, http.StatusOK)
 				return
 			}
 			periods, perr := h.menses.List(r.Context(), user.ID)
@@ -174,7 +177,7 @@ func (h *ProfileHandler) CreatePeriod(w http.ResponseWriter, r *http.Request) {
 	}
 	h.logger.Info("menses period created", "user", user.ID)
 	if isPartialRequest(r) {
-		h.renderPeriodsSection(w, r, user, token, nil, "", "", http.StatusOK)
+		h.renderPeriodsSection(w, r, user, token, nil, "", "", 0, http.StatusOK)
 		return
 	}
 	http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
@@ -201,7 +204,102 @@ func (h *ProfileHandler) DeletePeriod(w http.ResponseWriter, r *http.Request) {
 	}
 	h.logger.Info("menses period deleted", "id", id, "user", user.ID)
 	if isPartialRequest(r) {
-		h.renderPeriodsSection(w, r, user, token, nil, "", "", http.StatusOK)
+		h.renderPeriodsSection(w, r, user, token, nil, "", "", 0, http.StatusOK)
+		return
+	}
+	http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
+}
+
+// EditPeriod handles GET /settings/periods/{id}/edit. HX-Request returns the
+// #periods-section fragment with the requested row rendered as an inline edit
+// form; plain requests redirect back to the profile page.
+func (h *ProfileHandler) EditPeriod(w http.ResponseWriter, r *http.Request) {
+	user, _ := apmw.UserFromContext(r.Context())
+	sid := apmw.SessionIDFromContext(r.Context())
+	token := h.auth.CSRFToken(sid)
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	period, err := h.menses.Get(r.Context(), user.ID, id)
+	if err != nil {
+		if errors.Is(err, services.ErrMensesPeriodNotFound) {
+			h.errs.NotFound(w, r)
+			return
+		}
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	if !isPartialRequest(r) {
+		http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
+		return
+	}
+	start := period.StartDate.Format("2006-01-02")
+	end := ""
+	if period.EndDate.Valid {
+		end = period.EndDate.Time.Format("2006-01-02")
+	}
+	h.renderPeriodsSection(w, r, user, token, nil, start, end, id, http.StatusOK)
+}
+
+// UpdatePeriod handles POST /settings/periods/{id}. HX-Request returns the
+// refreshed #periods-section fragment; plain form posts redirect. Mirrors
+// CreatePeriod's validation-error handling, keeping the inline edit form open on
+// invalid input.
+func (h *ProfileHandler) UpdatePeriod(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	user, _ := apmw.UserFromContext(r.Context())
+	sid := apmw.SessionIDFromContext(r.Context())
+	token := h.auth.CSRFToken(sid)
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+
+	input := services.MensesPeriodInput{
+		StartDate: r.PostFormValue("start_date"),
+		EndDate:   r.PostFormValue("end_date"),
+	}
+	if err := h.menses.Update(r.Context(), user.ID, id, input); err != nil {
+		var ve *services.ValidationError
+		if errors.As(err, &ve) {
+			if isPartialRequest(r) {
+				// HTMX does not swap 4xx responses by default, so return 200
+				// for validation partials and keep the inline edit form open.
+				h.renderPeriodsSection(w, r, user, token, ve.Fields, input.StartDate, input.EndDate, id, http.StatusOK)
+				return
+			}
+			periods, perr := h.menses.List(r.Context(), user.ID)
+			if perr != nil {
+				h.errs.ServerError(w, r, perr)
+				return
+			}
+			h.render(w, profileView{
+				BaseView:     NewBaseViewForRequest(r, user, token, "Profile — Settings"),
+				Email:        user.Email,
+				Periods:      rowsFromPeriods(periods),
+				PeriodErrors: ve.Fields,
+				NewStart:     input.StartDate,
+				NewEnd:       input.EndDate,
+				EditingID:    id,
+			}, http.StatusUnprocessableEntity)
+			return
+		}
+		if errors.Is(err, services.ErrMensesPeriodNotFound) {
+			h.errs.NotFound(w, r)
+			return
+		}
+		h.errs.ServerError(w, r, err)
+		return
+	}
+	h.logger.Info("menses period updated", "id", id, "user", user.ID)
+	if isPartialRequest(r) {
+		h.renderPeriodsSection(w, r, user, token, nil, "", "", 0, http.StatusOK)
 		return
 	}
 	http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
@@ -331,7 +429,7 @@ func randomBasename(userID int64) (string, error) {
 	return fmt.Sprintf("%d_%s", userID, hex.EncodeToString(buf[:])), nil
 }
 
-func (h *ProfileHandler) renderPeriodsSection(w http.ResponseWriter, r *http.Request, user repository.User, csrfToken string, fieldErrors map[string]string, newStart, newEnd string, status int) {
+func (h *ProfileHandler) renderPeriodsSection(w http.ResponseWriter, r *http.Request, user repository.User, csrfToken string, fieldErrors map[string]string, newStart, newEnd string, editingID int64, status int) {
 	periods, err := h.menses.List(r.Context(), user.ID)
 	if err != nil {
 		h.errs.ServerError(w, r, err)
@@ -343,6 +441,7 @@ func (h *ProfileHandler) renderPeriodsSection(w http.ResponseWriter, r *http.Req
 		PeriodErrors: fieldErrors,
 		NewStart:     newStart,
 		NewEnd:       newEnd,
+		EditingID:    editingID,
 	}
 	w.WriteHeader(status)
 	if err := h.tmpl.RenderPartial(w, "settings/_periods_section.html", view); err != nil {

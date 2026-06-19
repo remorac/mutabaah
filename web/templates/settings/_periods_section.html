@@ -31,6 +31,44 @@
   {{if .Periods}}
   <ul class="flex flex-col border-t border-base-200">
     {{range .Periods}}
+    {{if eq .ID $.EditingID}}
+    <li class="py-3 border-b border-base-200 last:border-b-0">
+      <form method="POST" action="/settings/periods/{{.ID}}"
+            hx-post="/settings/periods/{{.ID}}"
+            hx-target="#periods-section"
+            hx-swap="outerHTML"
+            class="flex flex-col gap-4">
+        <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
+        <div class="grid md:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="label-text font-medium block mb-2">Start date</span>
+            <input type="date" name="start_date" required value="{{$.NewStart}}"
+              class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index $.PeriodErrors "start_date"}}input-error{{end}}" />
+            {{with index $.PeriodErrors "start_date"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+          </label>
+          <label class="block">
+            <span class="label-text font-medium block mb-2">End date <span class="font-normal opacity-60">(optional)</span></span>
+            <input type="date" name="end_date" value="{{$.NewEnd}}"
+              class="input input-bordered w-full transition-all focus:ring-2 focus:ring-primary/20 {{if index $.PeriodErrors "end_date"}}input-error{{end}}" />
+            {{with index $.PeriodErrors "end_date"}}<span class="text-error text-xs mt-1">{{.}}</span>{{end}}
+          </label>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="btn btn-ghost btn-sm"
+                  hx-get="/settings/profile"
+                  hx-select="#periods-section"
+                  hx-target="#periods-section"
+                  hx-swap="outerHTML">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-secondary btn-sm">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            Save
+          </button>
+        </div>
+      </form>
+    </li>
+    {{else}}
     <li class="flex items-center justify-between gap-3 py-3 border-b border-base-200 last:border-b-0">
       <div class="flex items-center gap-3 min-w-0">
         <span class="shrink-0 w-8 h-8 rounded-lg bg-pink-100 text-pink-500 grid place-items-center">
@@ -40,17 +78,26 @@
           <div class="font-medium text-sm">{{.StartDate}} &mdash; {{if .Ongoing}}<span class="badge badge-sm bg-pink-100 text-pink-700 border-pink-200 font-normal">ongoing</span>{{else}}{{.EndDate}}{{end}}</div>
         </div>
       </div>
-      <form method="POST" action="/settings/periods/{{.ID}}/delete"
-            hx-post="/settings/periods/{{.ID}}/delete"
-            hx-target="#periods-section"
-            hx-swap="outerHTML"
-            hx-confirm="Delete this period?">
-        <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
-        <button type="submit" class="btn btn-ghost btn-sm text-error" title="Delete">
-          <i data-lucide="trash-2" class="w-4 h-4"></i>
+      <div class="flex items-center gap-1 shrink-0">
+        <button type="button" class="btn btn-ghost btn-sm" title="Edit"
+                hx-get="/settings/periods/{{.ID}}/edit"
+                hx-target="#periods-section"
+                hx-swap="outerHTML">
+          <i data-lucide="pencil" class="w-4 h-4"></i>
         </button>
-      </form>
+        <form method="POST" action="/settings/periods/{{.ID}}/delete"
+              hx-post="/settings/periods/{{.ID}}/delete"
+              hx-target="#periods-section"
+              hx-swap="outerHTML"
+              hx-confirm="Delete this period?">
+          <input type="hidden" name="_csrf" value="{{$.CSRFToken}}" />
+          <button type="submit" class="btn btn-ghost btn-sm text-error" title="Delete">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </div>
     </li>
+    {{end}}
     {{end}}
   </ul>
   {{else}}
