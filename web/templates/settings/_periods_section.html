@@ -1,5 +1,6 @@
 {{define "_periods_section.html"}}
 <div id="periods-section" class="flex flex-col gap-5">
+  {{if not .EditingID}}
   <form method="POST" action="/settings/periods"
         hx-post="/settings/periods"
         hx-target="#periods-section"
@@ -27,6 +28,7 @@
       </button>
     </div>
   </form>
+  {{end}}
 
   {{if .Periods}}
   <ul class="flex flex-col border-t border-base-200">
@@ -55,8 +57,7 @@
         </div>
         <div class="flex justify-end gap-2">
           <button type="button" class="btn btn-ghost btn-sm"
-                  hx-get="/settings/profile"
-                  hx-select="#periods-section"
+                  hx-get="/settings/periods"
                   hx-target="#periods-section"
                   hx-swap="outerHTML">
             Cancel

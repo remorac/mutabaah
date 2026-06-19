@@ -137,6 +137,7 @@ func main() {
 		r.Get("/settings/profile", profileHandler.Show)
 		r.Post("/settings/profile", profileHandler.ChangePassword)
 		r.Post("/settings/profile/picture", profileHandler.UploadPicture)
+		r.Get("/settings/periods", profileHandler.ShowPeriods)
 		r.Post("/settings/periods", profileHandler.CreatePeriod)
 		r.Get("/settings/periods/{id}/edit", profileHandler.EditPeriod)
 		r.Post("/settings/periods/{id}", profileHandler.UpdatePeriod)

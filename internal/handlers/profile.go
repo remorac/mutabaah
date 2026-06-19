@@ -210,6 +210,22 @@ func (h *ProfileHandler) DeletePeriod(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
 }
 
+// ShowPeriods handles GET /settings/periods, returning the #periods-section
+// fragment in its default (non-editing) state. Used by the inline edit form's
+// Cancel button to restore the list — returning the partial directly keeps the
+// trailing lucide createIcons() script, which hx-select against the full page
+// would drop.
+func (h *ProfileHandler) ShowPeriods(w http.ResponseWriter, r *http.Request) {
+	user, _ := apmw.UserFromContext(r.Context())
+	sid := apmw.SessionIDFromContext(r.Context())
+	token := h.auth.CSRFToken(sid)
+	if !isPartialRequest(r) {
+		http.Redirect(w, r, "/settings/profile", http.StatusSeeOther)
+		return
+	}
+	h.renderPeriodsSection(w, r, user, token, nil, "", "", 0, http.StatusOK)
+}
+
 // EditPeriod handles GET /settings/periods/{id}/edit. HX-Request returns the
 // #periods-section fragment with the requested row rendered as an inline edit
 // form; plain requests redirect back to the profile page.
